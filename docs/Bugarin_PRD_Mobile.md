@@ -68,6 +68,7 @@ Referensi: wireframe "BERANDA".
 - **Badge streak**: hitung dari backend (`activity_logs OR meal_logs` hari ini + berturut-turut ke belakang).
 - **Jadwal latihan bareng PT**: dari `weekly_plans.workout_plan` (hari, jam, jenis) + `pt_profiles.tempat_gym` (lokasi). Hanya tampil jika `weekly_plans.status != pending_review` (belum ada plan disetujui → tampilkan state "menunggu PT" atau kosong).
 - **Banner reminder**: tampil di bawah jadwal, jika `NOW() > tanggal_mulai + durasi_hari` dan `progress_cycles.status = aktif` (durasi lewat, goal belum tercapai).
+- **Badge notifikasi tab Feedback**: diambil dari field `unreadFeedbackCount` yang dikembalikan endpoint ini, untuk ditampilkan di Bottom Nav tanpa perlu membuka tab Feedback terlebih dahulu.
 
 ### 3.4 PT ku
 Referensi: wireframe "PT ku" & "PT ku - Pilih PT".
@@ -106,8 +107,9 @@ Referensi: wireframe "Riwayat" (diperbarui jadi card per siklus, lihat pembahasa
 Referensi: wireframe "Feedback".
 
 - Feed gabungan, urut waktu: bubble AI (ikon AI) dan bubble PT (foto profil PT).
-- Badge notifikasi di ikon tab = jumlah feedback dengan `dibaca = false`.
-- Field "Ketik Balasan Anda" + tombol **Balas** — **hanya muncul jika `balasan_klien` masih null** untuk feedback tsb. Setelah dibalas, field jadi read-only/hilang untuk feedback itu.
+  - **Catatan AI**: Feedback dari AI muncul secara mingguan (hasil cron job backend setiap Senin 00:00, merekap aktivitas 7 hari ke belakang), bukan ditambahkan secara real-time langsung setelah klien mencatat progres harian.
+- Badge notifikasi di ikon tab = menggunakan field `unreadFeedbackCount` dari `GET /klien/dashboard-summary` (bukan dihitung manual dari list feedback di screen ini).
+- Field "Ketik Balasan Anda" + tombol **Balas** — **HANYA dirender untuk bubble feedback dari PT** (dan hanya jika `balasan_klien` masih null). Setelah dibalas, field tersebut hilang dari layout. **Untuk bubble feedback dari AI, elemen balasan ini tidak pernah ada di layout sama sekali** (bukan sekadar di-disable).
 
 ### 3.8 Profil
 Referensi: wireframe "Profil".
@@ -147,14 +149,14 @@ Setiap form punya tombol Simpan sendiri-sendiri (submit independen, bukan satu s
 | `GET /pt/recommendations?tujuan=` | List rekomendasi PT |
 | `POST /klien/pairing-requests` | Kirim request ke PT |
 | `GET /klien/pairing-requests/current` | Cek status request aktif |
-| `GET /klien/dashboard-summary` | Data agregat Dashboard (PT aktif, kalori, streak, jadwal, reminder) |
+| `GET /klien/dashboard-summary` | Data agregat Dashboard (PT aktif, kalori, streak, jadwal, reminder, unreadFeedbackCount) |
 | `GET /klien/weekly-plan/current` | Weekly Plan minggu berjalan |
 | `GET /master/olahraga` | List master olahraga (dropdown) |
 | `GET /master/makanan?q=` | Cari/list master makanan (preset + search custom) |
 | `POST /klien/activity-logs` | Catat olahraga |
 | `POST /klien/meal-logs` | Catat makanan |
 | `GET /klien/feedbacks` | List feed AI + PT |
-| `POST /klien/feedbacks/:id/reply` | Balas feedback (1x) |
+| `POST /klien/feedbacks/:id/reply` | Balas feedback (1x; HTTP 400 jika membalas feedback AI) |
 | `PUT /klien/feedbacks/:id/read` | Tandai sudah dibaca |
 
 > Catatan: ini kontrak awal untuk penyelarasan Mobile ↔ Backend. Detail request/response body (JSON schema) disusun di PRD Backend + AI.
@@ -176,6 +178,7 @@ Log yang butuh submit (activity_logs, meal_logs, weight_logs) **tidak** disimpan
 ## 6. Validasi & Edge Cases Penting
 
 - Field Jarak di Progres hanya submit-able (required) jika `master_olahraga.butuh_jarak = true` untuk item terpilih — validasi juga di frontend sebelum submit supaya tidak bolak-balik ke backend.
-- Balasan feedback: tombol Balas disable/hilang otomatis setelah `balasan_klien` terisi (state dari response API, bukan asumsi lokal).
+- Balasan feedback PT: tombol Balas disable/hilang otomatis setelah `balasan_klien` terisi (state dari response API, bukan asumsi lokal).
+- Tombol/field Balas hanya dirender untuk bubble feedback bersumber PT; untuk feedback AI, elemen ini tidak pernah ditampilkan sama sekali (bukan kondisi disabled, tapi memang tidak ada di layout untuk tipe bubble ini).
 - Request PT: tombol "Pilih PT" di-disable jika klien masih punya `pairing_requests` berstatus `pending` (cegah double request — validasi utama tetap di backend).
 - Progress bar di Profil harus handle kasus `bb_sekarang` melewati `bb_tujuan` (misal progress > 100%) — clamp tampilan di 100% tapi tetap simpan angka asli.
