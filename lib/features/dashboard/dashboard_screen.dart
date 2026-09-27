@@ -23,7 +23,7 @@ class DashboardSummary {
 Future<DashboardSummary> dashboardSummary(Ref ref) async {
   final api = ref.watch(apiClientProvider);
   final response = await api.dio.get('/klien/dashboard-summary');
-  return response.unwrap(DashboardSummary.fromJson);
+  return response.unwrap((json) => DashboardSummary.fromJson(json as Map<String, dynamic>));
 }
 
 class DashboardScreen extends ConsumerWidget {

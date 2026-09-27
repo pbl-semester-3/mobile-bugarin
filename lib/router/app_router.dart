@@ -22,7 +22,7 @@ part 'app_router.g.dart';
 /// berubah di tengah sesi (401 dari interceptor Dio, atau onboarding baru selesai).
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
-    ref.listen(authStateNotifierProvider, (_, __) => notifyListeners());
+    ref.listen(authStateProvider, (_, __) => notifyListeners());
   }
 }
 
@@ -34,7 +34,7 @@ GoRouter router(Ref ref) {
     initialLocation: '/login',
     refreshListenable: refresh,
     redirect: (context, state) {
-      final authState = ref.read(authStateNotifierProvider);
+      final authState = ref.read(authStateProvider);
       final loc = state.matchedLocation;
 
       if (authState is Unauthenticated) {

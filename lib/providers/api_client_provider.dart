@@ -12,6 +12,6 @@ TokenStorage tokenStorage(Ref ref) => TokenStorage();
 ApiClient apiClient(Ref ref) {
   return ApiClient(
     tokenStorage: ref.watch(tokenStorageProvider),
-    onUnauthorized: () => ref.read(authStateNotifierProvider.notifier).logout(),
+    onUnauthorized: () => ref.read(authStateProvider.notifier).logout(),
   );
 }
