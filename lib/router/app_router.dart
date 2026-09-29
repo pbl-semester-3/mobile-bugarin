@@ -1,70 +1,64 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../providers/auth_provider.dart';
-import '../shell/main_shell.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
-import '../features/dashboard/dashboard_screen.dart';
-import '../features/pt_ku/pt_ku_screen.dart';
-import '../features/progres/progres_screen.dart';
-import '../features/riwayat/riwayat_screen.dart';
-import '../features/feedback/feedback_screen.dart';
-import '../features/profil/profil_screen.dart';
+import '../features/welcome/welcome_screen.dart';
+import '../providers/auth_provider.dart';
+import '../shell/main_shell.dart';
 
 part 'app_router.g.dart';
 
-/// Jembatan Riverpod state -> Listenable yang dibutuhkan GoRouter `refreshListenable`.
-/// Auth guard WAJIB reaktif (bukan dicek sekali di awal) karena status auth bisa
-/// berubah di tengah sesi (401 dari interceptor Dio, atau onboarding baru selesai).
-class _RouterRefreshNotifier extends ChangeNotifier {
-  _RouterRefreshNotifier(Ref ref) {
-    ref.listen(authStateProvider, (_, __) => notifyListeners());
-  }
-}
-
 @riverpod
-GoRouter router(Ref ref) {
-  final refresh = _RouterRefreshNotifier(ref);
+GoRouter appRouter(Ref ref) {
+  final authState = ref.watch(authStateProvider);
 
   return GoRouter(
-    initialLocation: '/login',
-    refreshListenable: refresh,
+    initialLocation: '/welcome',
     redirect: (context, state) {
-      final authState = ref.read(authStateProvider);
-      final loc = state.matchedLocation;
+      final isLoggedIn = authState is Authenticated;
 
-      if (authState is Unauthenticated) {
-        return (loc == '/login' || loc == '/register') ? null : '/login';
+      final isGoingToAuthOrWelcome = state.matchedLocation == '/welcome' ||
+          state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register';
+
+      final isGoingToOnboarding = state.matchedLocation == '/onboarding';
+      final isGoingToDashboard = state.matchedLocation == '/';
+
+      // 1. Izinkan akses Onboarding & Dashboard bebas dibuka saat pengujian UI
+      if (isGoingToOnboarding || isGoingToDashboard) {
+        return null;
       }
 
-      final authenticated = authState as Authenticated;
-      if (!authenticated.profileComplete && loc != '/onboarding') {
-        return '/onboarding';
+      // 2. Cegat rute lain jika memang belum login
+      if (!isLoggedIn && !isGoingToAuthOrWelcome) {
+        return '/welcome';
       }
-      if (authenticated.profileComplete && (loc == '/login' || loc == '/onboarding')) {
-        return '/';
-      }
+
       return null;
     },
     routes: [
-      GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
-      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
-      ShellRoute(
-        builder: (context, state, child) => MainShell(child: child),
-        routes: [
-          GoRoute(path: '/', builder: (_, __) => const DashboardScreen()),
-          GoRoute(path: '/pt-ku', builder: (_, __) => const PtKuScreen()),
-          GoRoute(path: '/progres', builder: (_, __) => const ProgresScreen()),
-          GoRoute(path: '/riwayat', builder: (_, __) => const RiwayatScreen()),
-          GoRoute(path: '/feedback', builder: (_, __) => const FeedbackScreen()),
-        ],
+      GoRoute(
+        path: '/welcome',
+        builder: (context, state) => const WelcomeScreen(),
       ),
-      GoRoute(path: '/profil', builder: (_, __) => const ProfilScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
+      ),
+      GoRoute(
+        path: '/',
+        builder: (context, state) => const MainShell(),
+      ),
     ],
   );
 }

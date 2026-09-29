@@ -7,12 +7,12 @@ class ProgresScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
+    return const DefaultTabController(
       length: 2,
       child: Column(
         children: [
-          const TabBar(tabs: [Tab(text: 'Olahraga'), Tab(text: 'Meal')]),
-          const Expanded(
+          TabBar(tabs: [Tab(text: 'Olahraga'), Tab(text: 'Meal')]),
+          Expanded(
             child: TabBarView(
               children: [
                 Center(child: Text('Tab Olahraga')),
