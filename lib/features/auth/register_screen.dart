@@ -43,7 +43,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      // Simulasi jeda waktu pengiriman data
       await Future.delayed(const Duration(milliseconds: 600));
 
       // Saat backend temanmu aktif, cukup aktifkan baris ini:
@@ -141,7 +140,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                     const SizedBox(height: 22),
 
-                    // Tab Selector Masuk / Daftar
                     Container(
                       height: 48,
                       padding: const EdgeInsets.all(4),
@@ -228,7 +226,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Kotak Notifikasi Error
                     if (_errorMessage != null) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -250,7 +247,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 14),
                     ],
 
-                    // Input 1: Nama Lengkap
                     TextFormField(
                       controller: _nameController,
                       style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -268,7 +264,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                     const SizedBox(height: 12),
 
-                    // Input 2: Username
                     TextFormField(
                       controller: _usernameController,
                       style: const TextStyle(color: Colors.white, fontSize: 14),
@@ -289,7 +284,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                     const SizedBox(height: 12),
 
-                    // Input 3: Email
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -312,7 +306,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                     const SizedBox(height: 12),
 
-                    // Input 4: Kata Sandi
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
@@ -370,7 +363,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Tombol Submit
                     SizedBox(
                       height: 52,
                       child: ElevatedButton(

@@ -34,7 +34,6 @@ class ApiClient {
   }
 }
 
-/// Error validasi dari backend, format: { "error": { "fields": { "email": ["..."] } } }
 class ApiValidationError implements Exception {
   final Map<String, List<String>> fieldErrors;
   ApiValidationError(this.fieldErrors);

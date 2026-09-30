@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/theme/theme_provider.dart';
 import 'providers/has_seen_welcome_provider.dart';
 import 'router/app_router.dart';
 import 'services/token_storage.dart';
@@ -24,14 +25,15 @@ class BugarinApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router = ref.watch(appRouterProvider); 
-    
+    final router = ref.watch(appRouterProvider);
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp.router(
       title: 'Bugarin',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
-      darkTheme: ThemeData(colorSchemeSeed: Colors.teal, brightness: Brightness.dark, useMaterial3: true),
-      themeMode: ThemeMode.system,
+      theme: bugarinLightTheme,
+      darkTheme: bugarinDarkTheme,
+      themeMode: themeMode,
       routerConfig: router,
     );
   }

@@ -35,8 +35,6 @@ class WeeklyPlanCache extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-// TODO: lengkapi query get-or-sync sesuai skill drift-offline-cache
-// (syncOlahraga, syncMakanan, cacheWeeklyPlan, getCachedWeeklyPlan).
 @DriftDatabase(tables: [MasterOlahragaCache, MasterMakananCache, WeeklyPlanCache])
 class LocalDatabase extends _$LocalDatabase {
   LocalDatabase() : super(_openConnection());

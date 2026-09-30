@@ -26,12 +26,9 @@ GoRouter appRouter(Ref ref) {
       final isGoingToOnboarding = state.matchedLocation == '/onboarding';
       final isGoingToDashboard = state.matchedLocation == '/';
 
-      // 1. Izinkan akses Onboarding & Dashboard bebas dibuka saat pengujian UI
       if (isGoingToOnboarding || isGoingToDashboard) {
         return null;
       }
-
-      // 2. Cegat rute lain jika memang belum login
       if (!isLoggedIn && !isGoingToAuthOrWelcome) {
         return '/welcome';
       }

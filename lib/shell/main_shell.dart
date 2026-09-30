@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../core/theme/theme_provider.dart';
 import '../features/dashboard/dashboard_screen.dart';
+import '../features/pt_ku/pt_ku_screen.dart';
+import '../features/progres/progres_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -11,40 +14,39 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
 
-  // Daftar halaman untuk setiap tab (Beranda, Pelatih, Progress, Riwayat, Feedback)
   final List<Widget> _pages = const [
     DashboardScreen(),
-    _PlaceholderTabScreen(title: 'Sesi Bersama Pelatih'),
-    _PlaceholderTabScreen(title: 'Progress Transformasi Fisik'),
+    PtKuScreen(),
+    ProgresScreen(),
     _PlaceholderTabScreen(title: 'Riwayat Catatan Latihan'),
     _PlaceholderTabScreen(title: 'Feedback & Komunitas AI+PT'),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final isDark = context.isDark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF090E0C),
-      // IndexedStack menjaga agar halaman tidak reload dari awal saat berpindah tab
+      backgroundColor: context.bg,
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,
       ),
-      // FOOTER KAPSUL MELAYANG PERSIS SEPERTI DESAIN ASLI
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           decoration: BoxDecoration(
-            color: const Color(0xFF0F1C18), // Warna dasar Deep Pine
-            borderRadius: BorderRadius.circular(36), // Bentuk kapsul melingkar penuh
+            color: context.card,
+            borderRadius: BorderRadius.circular(36),
             border: Border.all(
-              color: const Color(0xFF1B2F28), // Garis pinggir halus
+              color: context.border,
               width: 1.2,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.5),
+                color: isDark ? Colors.black.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -53,31 +55,11 @@ class _MainShellState extends State<MainShell> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(
-                index: 0,
-                icon: Icons.home_outlined,
-                label: 'Beranda',
-              ),
-              _buildNavItem(
-                index: 1,
-                icon: Icons.sports, // Ikon peluit resmi pelatih
-                label: 'Pelatih',
-              ),
-              _buildNavItem(
-                index: 2,
-                icon: Icons.trending_up_rounded,
-                label: 'Progress',
-              ),
-              _buildNavItem(
-                index: 3,
-                icon: Icons.history_rounded,
-                label: 'Riwayat',
-              ),
-              _buildNavItem(
-                index: 4,
-                icon: Icons.chat_bubble_rounded,
-                label: 'Feedback',
-              ),
+              _buildNavItem(index: 0, icon: Icons.home_outlined, label: 'Beranda'),
+              _buildNavItem(index: 1, icon: Icons.sports, label: 'PT ku'),
+              _buildNavItem(index: 2, icon: Icons.trending_up_rounded, label: 'Progres'),
+              _buildNavItem(index: 3, icon: Icons.history_rounded, label: 'Riwayat'),
+              _buildNavItem(index: 4, icon: Icons.chat_bubble_rounded, label: 'Feedback'),
             ],
           ),
         ),
@@ -85,17 +67,14 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  // WIDGET ITEM NAVIGASI DENGAN INDIKATOR WARNA ELEGAN (BUKAN NEON)
   Widget _buildNavItem({
     required int index,
     required IconData icon,
     required String label,
   }) {
     final isSelected = _currentIndex == index;
-
-    // Saat aktif: Putih bersih (#FFFFFF). Saat tidak aktif: Abu-abu lembut (#70827A)
-    final Color activeColor = Colors.white;
-    final Color inactiveColor = const Color(0xFF70827A);
+    final Color activeColor = isSelected ? const Color(0xFFFF5520) : (context.isDark ? Colors.white : const Color(0xFF0E1714));
+    final Color inactiveColor = context.textSecondary;
 
     return Expanded(
       child: Material(
@@ -107,8 +86,6 @@ class _MainShellState extends State<MainShell> {
             });
           },
           borderRadius: BorderRadius.circular(24),
-          splashColor: Colors.white.withValues(alpha: 0.1),
-          highlightColor: Colors.transparent,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Column(
@@ -117,7 +94,6 @@ class _MainShellState extends State<MainShell> {
                 AnimatedScale(
                   scale: isSelected ? 1.08 : 1.0,
                   duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
                   child: Icon(
                     icon,
                     size: 22,
@@ -132,8 +108,7 @@ class _MainShellState extends State<MainShell> {
                   style: TextStyle(
                     color: isSelected ? activeColor : inactiveColor,
                     fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    letterSpacing: 0.2,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
                 ),
               ],
@@ -145,7 +120,6 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-// Layar sementara yang rapi untuk tab lain sebelum disambungkan ke modulnya masing-masing
 class _PlaceholderTabScreen extends StatelessWidget {
   final String title;
   const _PlaceholderTabScreen({required this.title});
@@ -153,7 +127,7 @@ class _PlaceholderTabScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF090E0C),
+      backgroundColor: context.bg,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -165,13 +139,13 @@ class _PlaceholderTabScreen extends StatelessWidget {
                   width: 56,
                   height: 56,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF111E19),
+                    color: context.surfaceInner,
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: const Color(0xFF1B2F28)),
+                    border: Border.all(color: context.border),
                   ),
                   child: const Icon(
                     Icons.construction_rounded,
-                    color: Color(0xFF3EE5B4),
+                    color: Color(0xFFFF5520),
                     size: 26,
                   ),
                 ),
@@ -179,18 +153,18 @@ class _PlaceholderTabScreen extends StatelessWidget {
                 Text(
                   title,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: context.textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Modul ini sudah terhubung ke navigasi utama.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Color(0xFF70827A),
+                    color: context.textSecondary,
                     fontSize: 13,
                   ),
                 ),
