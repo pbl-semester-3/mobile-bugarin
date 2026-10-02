@@ -3,11 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+
 import '../../core/theme/theme_provider.dart';
 import '../../shared/widgets/bugarin_header.dart';
 
 part 'dashboard_screen.g.dart';
 
+// ============================================================================
+// 1. DATA MODEL & PROVIDER
+// ============================================================================
 class DashboardSummary {
   final String userName;
   final int cycleDay;
@@ -31,14 +35,17 @@ Future<DashboardSummary> dashboardSummary(Ref ref) async {
   final savedName = await storage.read(key: 'user_name');
 
   return DashboardSummary(
-    userName: (savedName != null && savedName.isNotEmpty) ? savedName : 'Alex Rivera',
+    userName: (savedName != null && savedName.isNotEmpty) ? savedName : 'Maya',
     cycleDay: 14,
-    targetCalories: savedTarget != null ? int.tryParse(savedTarget) ?? 1980 : 1980,
+    targetCalories: savedTarget != null ? (int.tryParse(savedTarget) ?? 2175) : 2175,
     consumedCalories: 1420,
     streakDays: 12,
   );
 }
 
+// ============================================================================
+// 2. MAIN SCREEN WIDGET
+// ============================================================================
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
@@ -46,8 +53,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen>
-    with SingleTickerProviderStateMixin {
+class _DashboardScreenState extends ConsumerState<DashboardScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _animController;
   late final Animation<double> _curvedAnimation;
 
@@ -56,19 +62,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000), // Dipercepat dari 4000ms agar lebih responsif
     );
-
+    
     _curvedAnimation = CurvedAnimation(
       parent: _animController,
-      curve: Curves.easeOutCubic,
+      curve: Curves.easeOut,
     );
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _animController.forward(from: 0.0);
-      }
-    });
   }
 
   @override
@@ -83,13 +83,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   String _formatKcal(int value) {
     return value.toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (Match m) => '${m[1]},',
-        );
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Mendengarkan state untuk memicu animasi saat data selesai di-load
+    ref.listen<AsyncValue<DashboardSummary>>(
+      dashboardSummaryProvider,
+      (previous, next) {
+        if (next.hasValue && (previous == null || previous.isLoading)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _animController.forward(from: 0.0);
+          });
+        }
+      },
+    );
+
     final summaryAsync = ref.watch(dashboardSummaryProvider);
 
     return Scaffold(
@@ -97,18 +109,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       body: SafeArea(
         child: summaryAsync.when(
           loading: () => const Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFFFF5520),
-              strokeWidth: 2.2,
-            ),
+            child: CircularProgressIndicator(color: Color(0xFFFF5520), strokeWidth: 2.2),
           ),
           error: (err, _) => Center(
             child: Text('Gagal memuat: $err', style: const TextStyle(color: Colors.red)),
           ),
           data: (data) {
-            final double targetProgress = (data.consumedCalories /
-                    (data.targetCalories == 0 ? 1 : data.targetCalories))
-                .clamp(0.0, 1.0);
+            final double targetProgress = (data.consumedCalories / (data.targetCalories == 0 ? 1 : data.targetCalories)).clamp(0.0, 1.0);
 
             return SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -118,25 +125,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 children: [
                   const BugarinHeader(subtitle: 'Beranda'),
                   const SizedBox(height: 24),
+                  
                   Text(
                     'Selamat Datang, ${data.userName}',
-                    style: TextStyle(
-                      color: context.textPrimary,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.2,
-                    ),
+                    style: TextStyle(color: context.textPrimary, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: 0.2),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Hari ke-${data.cycleDay} Siklus Transformasi',
-                    style: TextStyle(
-                      color: context.textSecondary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(color: context.textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 20),
+                  
                   GestureDetector(
                     onTap: _triggerReplay,
                     child: Container(
@@ -144,10 +144,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       decoration: BoxDecoration(
                         color: context.card,
                         borderRadius: BorderRadius.circular(28),
-                        border: Border.all(
-                          color: context.border,
-                          width: 1.2,
-                        ),
+                        border: Border.all(color: context.border, width: 1.2),
                       ),
                       child: Column(
                         children: [
@@ -158,15 +155,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               builder: (context, _) {
                                 final animVal = _curvedAnimation.value;
                                 final animatedConsumed = (data.consumedCalories * animVal).round();
-                                final animatedRemaining = (data.targetCalories - animatedConsumed)
-                                    .clamp(0, data.targetCalories);
+                                final animatedRemaining = (data.targetCalories - animatedConsumed).clamp(0, data.targetCalories);
 
                                 return Stack(
                                   alignment: Alignment.center,
                                   children: [
                                     CustomPaint(
                                       size: const Size(210, 210),
-                                      painter: _LiveArcPainter(
+                                      painter: LiveArcPainter(
                                         progress: targetProgress * animVal,
                                         strokeWidth: 14.0,
                                         trackColor: context.isDark ? const Color(0xFF162520) : const Color(0xFFE2E8E5),
@@ -178,31 +174,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                       children: [
                                         Text(
                                           _formatKcal(animatedConsumed),
-                                          style: TextStyle(
-                                            color: context.textPrimary,
-                                            fontSize: 38,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5,
-                                          ),
+                                          style: TextStyle(color: context.textPrimary, fontSize: 38, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
                                           'DARI ${_formatKcal(data.targetCalories)} KKAL',
-                                          style: TextStyle(
-                                            color: context.textSecondary,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 1.2,
-                                          ),
+                                          style: TextStyle(color: context.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.2),
                                         ),
                                         const SizedBox(height: 6),
                                         Text(
                                           'Tersisa $animatedRemaining kkal',
-                                          style: TextStyle(
-                                            color: context.textSecondary,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
+                                          style: TextStyle(color: context.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                                         ),
                                       ],
                                     ),
@@ -217,10 +199,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             decoration: BoxDecoration(
                               color: context.surfaceInner,
                               borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: context.border,
-                                width: 1,
-                              ),
+                              border: Border.all(color: context.border, width: 1),
                             ),
                             child: Row(
                               children: [
@@ -231,11 +210,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                     shape: BoxShape.circle,
                                     color: context.isDark ? const Color(0xFF1A2E27) : const Color(0xFFFFECE5),
                                   ),
-                                  child: const Icon(
-                                    Icons.local_fire_department_rounded,
-                                    color: Color(0xFFFF5520),
-                                    size: 20,
-                                  ),
+                                  child: const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF5520), size: 20),
                                 ),
                                 const SizedBox(width: 12),
                                 Column(
@@ -243,32 +218,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                   children: [
                                     Row(
                                       children: [
-                                        Text(
-                                          '${data.streakDays} Hari',
-                                          style: TextStyle(
-                                            color: context.textPrimary,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
+                                        Text('${data.streakDays} Hari', style: TextStyle(color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
                                         const SizedBox(width: 5),
-                                        Text(
-                                          'Beruntun',
-                                          style: TextStyle(
-                                            color: context.textSecondary,
-                                            fontSize: 13,
-                                          ),
-                                        ),
+                                        Text('Beruntun', style: TextStyle(color: context.textSecondary, fontSize: 13)),
                                       ],
                                     ),
                                     const SizedBox(height: 2),
-                                    Text(
-                                      'Ritme Konsisten',
-                                      style: TextStyle(
-                                        color: context.textMuted,
-                                        fontSize: 11,
-                                      ),
-                                    ),
+                                    Text('Ritme Konsisten', style: TextStyle(color: context.textMuted, fontSize: 11)),
                                   ],
                                 ),
                               ],
@@ -278,38 +234,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       ),
                     ),
                   ),
+                  
                   const SizedBox(height: 26),
+                  
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Jadwal Sesi Hari Ini',
-                        style: TextStyle(
-                          color: context.textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'Lihat Kalender',
-                        style: TextStyle(
-                          color: context.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      Text('Jadwal Sesi Hari Ini', style: TextStyle(color: context.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('Lihat Kalender', style: TextStyle(color: context.textSecondary, fontSize: 12, fontWeight: FontWeight.w500)),
                     ],
                   ),
                   const SizedBox(height: 14),
+                  
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: context.card,
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: context.border,
-                        width: 1.2,
-                      ),
+                      border: Border.all(color: context.border, width: 1.2),
                     ),
                     child: Column(
                       children: [
@@ -320,14 +262,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               height: 54,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: const Color(0xFFFF5520),
-                                  width: 1.8,
-                                ),
+                                border: Border.all(color: const Color(0xFFFF5520), width: 1.8),
                                 image: const DecorationImage(
-                                  image: NetworkImage(
-                                    'https://images.unsplash.com/photo-1594381898411-846e7d193883?w=200',
-                                  ),
+                                  image: NetworkImage('https://images.unsplash.com/photo-1594381898411-846e7d193883?w=200'),
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -337,31 +274,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    'Coach Sarah Jenkins',
-                                    style: TextStyle(
-                                      color: context.textPrimary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
+                                  Text('Coach Sarah Jenkins', style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.bold, fontSize: 15)),
                                   const SizedBox(height: 3),
-                                  Text(
-                                    'Calisthenics & Hypertrophy Lead',
-                                    style: TextStyle(
-                                      color: context.textSecondary,
-                                      fontSize: 11,
-                                    ),
-                                  ),
+                                  Text('Calisthenics & Hypertrophy Lead', style: TextStyle(color: context.textSecondary, fontSize: 11)),
                                   const SizedBox(height: 7),
                                   Row(
                                     children: [
                                       const Icon(Icons.access_time_rounded, size: 13, color: Color(0xFFFF5520)),
                                       const SizedBox(width: 5),
-                                      Text(
-                                        'Hari ini, 16:30 - 17:30 WIB',
-                                        style: TextStyle(color: context.textSecondary, fontSize: 11),
-                                      ),
+                                      Text('Hari ini, 16:30 - 17:30 WIB', style: TextStyle(color: context.textSecondary, fontSize: 11)),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
@@ -371,7 +292,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                       const SizedBox(width: 5),
                                       Expanded(
                                         child: Text(
-                                          'FitZone Senopati • Studio B',
+                                          'FitZone Studio B, Senopati',
                                           style: TextStyle(color: context.textSecondary, fontSize: 11),
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -395,17 +316,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                                     backgroundColor: const Color(0xFFFF5520),
                                     foregroundColor: Colors.white,
                                     elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                   ),
-                                  child: const Text(
-                                    'Masuk Sesi Latihan',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
+                                  child: const Text('Masuk Sesi Latihan', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                 ),
                               ),
                             ),
@@ -420,11 +333,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               ),
                               child: IconButton(
                                 onPressed: () {},
-                                icon: const Icon(
-                                  Icons.chat_bubble_outline_rounded,
-                                  color: Color(0xFFFF5520),
-                                  size: 18,
-                                ),
+                                icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFFFF5520), size: 18),
                               ),
                             ),
                           ],
@@ -442,13 +351,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 }
 
-class _LiveArcPainter extends CustomPainter {
+// ============================================================================
+// 3. CUSTOM PAINTER UNTUK GRAFIK KALORI
+// ============================================================================
+class LiveArcPainter extends CustomPainter {
   final double progress;
   final double strokeWidth;
   final Color trackColor;
   final Color activeColor;
 
-  _LiveArcPainter({
+  LiveArcPainter({
     required this.progress,
     required this.strokeWidth,
     required this.trackColor,
@@ -459,9 +371,8 @@ class _LiveArcPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width - strokeWidth) / 2;
-
-    const startAngle = -65 * (math.pi / 180);
-    const totalSweep = 180 * (math.pi / 180);
+    const startAngle = 145 * (math.pi / 180);
+    const totalSweep = 250 * (math.pi / 180);
 
     final trackPaint = Paint()
       ..color = trackColor
@@ -495,5 +406,5 @@ class _LiveArcPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _LiveArcPainter oldDelegate) => true;
+  bool shouldRepaint(covariant LiveArcPainter oldDelegate) => true;
 }

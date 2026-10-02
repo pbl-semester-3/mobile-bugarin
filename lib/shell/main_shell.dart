@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../core/theme/theme_provider.dart';
 import '../features/dashboard/dashboard_screen.dart';
-import '../features/pt_ku/pt_ku_screen.dart';
+import '../features/feedback/feedback_screen.dart'; // <-- 1. Tambahkan import ini
 import '../features/progres/progres_screen.dart';
+import '../features/pt_ku/pt_ku_screen.dart';
+import '../features/riwayat/riwayat_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -12,24 +14,24 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
+  int currentIndex = 0;
 
+  // 2. Ganti PlaceholderTabScreen dengan FeedbackScreen()
   final List<Widget> _pages = const [
     DashboardScreen(),
     PtKuScreen(),
     ProgresScreen(),
-    _PlaceholderTabScreen(title: 'Riwayat Catatan Latihan'),
-    _PlaceholderTabScreen(title: 'Feedback & Komunitas AI+PT'),
+    RiwayatScreen(),
+    FeedbackScreen(), // <-- Ganti di sini
   ];
 
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDark;
-
     return Scaffold(
       backgroundColor: context.bg,
       body: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: _pages,
       ),
       bottomNavigationBar: SafeArea(
@@ -46,7 +48,9 @@ class _MainShellState extends State<MainShell> {
             ),
             boxShadow: [
               BoxShadow(
-                color: isDark ? Colors.black.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.08),
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.5)
+                    : Colors.black.withValues(alpha: 0.08),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -55,11 +59,11 @@ class _MainShellState extends State<MainShell> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(index: 0, icon: Icons.home_outlined, label: 'Beranda'),
-              _buildNavItem(index: 1, icon: Icons.sports, label: 'PT ku'),
-              _buildNavItem(index: 2, icon: Icons.trending_up_rounded, label: 'Progres'),
-              _buildNavItem(index: 3, icon: Icons.history_rounded, label: 'Riwayat'),
-              _buildNavItem(index: 4, icon: Icons.chat_bubble_rounded, label: 'Feedback'),
+              buildNavItem(index: 0, icon: Icons.home_outlined, label: 'Beranda'),
+              buildNavItem(index: 1, icon: Icons.sports, label: 'PT ku'),
+              buildNavItem(index: 2, icon: Icons.trending_up_rounded, label: 'Progres'),
+              buildNavItem(index: 3, icon: Icons.history_rounded, label: 'Riwayat'),
+              buildNavItem(index: 4, icon: Icons.chat_bubble_rounded, label: 'Feedback'),
             ],
           ),
         ),
@@ -67,13 +71,15 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Widget _buildNavItem({
+  Widget buildNavItem({
     required int index,
     required IconData icon,
     required String label,
   }) {
-    final isSelected = _currentIndex == index;
-    final Color activeColor = isSelected ? const Color(0xFFFF5520) : (context.isDark ? Colors.white : const Color(0xFF0E1714));
+    final isSelected = currentIndex == index;
+    final Color activeColor = isSelected
+        ? const Color(0xFFFF5520)
+        : (context.isDark ? Colors.white : const Color(0xFF0E1714));
     final Color inactiveColor = context.textSecondary;
 
     return Expanded(
@@ -82,7 +88,7 @@ class _MainShellState extends State<MainShell> {
         child: InkWell(
           onTap: () {
             setState(() {
-              _currentIndex = index;
+              currentIndex = index;
             });
           },
           borderRadius: BorderRadius.circular(24),
@@ -109,63 +115,6 @@ class _MainShellState extends State<MainShell> {
                     color: isSelected ? activeColor : inactiveColor,
                     fontSize: 11,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderTabScreen extends StatelessWidget {
-  final String title;
-  const _PlaceholderTabScreen({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.bg,
-      body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: context.surfaceInner,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: context.border),
-                  ),
-                  child: const Icon(
-                    Icons.construction_rounded,
-                    color: Color(0xFFFF5520),
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: context.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Modul ini sudah terhubung ke navigasi utama.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: context.textSecondary,
-                    fontSize: 13,
                   ),
                 ),
               ],

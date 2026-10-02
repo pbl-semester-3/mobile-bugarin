@@ -9,22 +9,29 @@ class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({this.mode = 'first-time', super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  State<OnboardingScreen> createState() => OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen> {
+class OnboardingScreenState extends State<OnboardingScreen> {
   final _storage = const FlutterSecureStorage();
-
-  bool _isMale = true;
+  
+  bool isMale = true;
   int _age = 26;
   int _height = 175;
-
-  final List<String> _allergyOptions = ['Kacang', 'Laktosa', 'Gluten', 'Seafood', 'Tidak Ada (Bebas)'];
+  final List<String> _allergyOptions = [
+    'Kacang',
+    'Laktosa',
+    'Gluten',
+    'Seafood',
+    'Tidak Ada (Bebas)'
+  ];
   final List<String> _selectedAllergies = ['Tidak Ada (Bebas)'];
-
   int _targetGoalIndex = 0; // 0: Turun BB, 1: Naik BB Massa Otot
   double _currentWeight = 72.5;
   double _targetWeight = 67.0;
+  
+  // Fitur Durasi Siklus Komitmen (Default: 60 Hari)
+  int _selectedDuration = 60; 
 
   bool _isSaving = false;
 
@@ -42,14 +49,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _currentWeightController = TextEditingController(text: '$_currentWeight');
     _targetWeightController = TextEditingController(text: '$_targetWeight');
     _otherAllergyController = TextEditingController();
-    _loadExistingData();
+    loadExistingData();
   }
 
-  Future<void> _loadExistingData() async {
+  Future<void> loadExistingData() async {
     final weight = await _storage.read(key: 'current_weight');
     final height = await _storage.read(key: 'user_height');
     final age = await _storage.read(key: 'user_age');
     final gender = await _storage.read(key: 'user_gender');
+    final duration = await _storage.read(key: 'cycle_duration_days');
 
     if (mounted) {
       setState(() {
@@ -74,7 +82,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             _ageController.text = '$p';
           }
         }
-        if (gender != null) _isMale = gender == 'male';
+        if (gender != null) isMale = gender == 'male';
+        if (duration != null) {
+          final d = int.tryParse(duration);
+          if (d != null) _selectedDuration = d;
+        }
       });
     }
   }
@@ -107,7 +119,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   int get _calculatedCalories {
-    double bmr = _isMale
+    double bmr = isMale
         ? (10 * _currentWeight) + (6.25 * _height) - (5 * _age) + 5
         : (10 * _currentWeight) + (6.25 * _height) - (5 * _age) - 161;
     final tdee = bmr * 1.55; // Default Sedang
@@ -115,18 +127,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return (tdee + 350).round().clamp(1500, 5000); // Naik
   }
 
-  Future<void> _submitData() async {
+  Future<void> submitData() async {
     setState(() => _isSaving = true);
     try {
       await _storage.write(key: 'has_completed_profile', value: 'true');
-      await _storage.write(key: 'user_gender', value: _isMale ? 'male' : 'female');
+      await _storage.write(key: 'user_gender', value: isMale ? 'male' : 'female');
       await _storage.write(key: 'user_age', value: '$_age');
       await _storage.write(key: 'user_height', value: '$_height');
       await _storage.write(key: 'current_weight', value: '$_currentWeight');
       await _storage.write(key: 'user_target_weight', value: '$_targetWeight');
       await _storage.write(key: 'daily_calorie_target', value: '$_calculatedCalories');
-      
-      final allergyStr = _selectedAllergies.join(', ') + (_otherAllergyController.text.isNotEmpty ? ', ${_otherAllergyController.text}' : '');
+      await _storage.write(key: 'cycle_duration_days', value: '$_selectedDuration');
+
+      final allergyStr = _selectedAllergies.join(', ') +
+          (_otherAllergyController.text.isNotEmpty ? ', ${_otherAllergyController.text}' : '');
       await _storage.write(key: 'user_allergies', value: allergyStr);
 
       await Future.delayed(const Duration(milliseconds: 300));
@@ -159,16 +173,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   Container(
                     width: 38,
                     height: 38,
-                    decoration: BoxDecoration(color: context.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: context.border)),
+                    decoration: BoxDecoration(
+                      color: context.card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: context.border),
+                    ),
                     child: GestureDetector(
                       onTap: () => context.canPop() ? context.pop() : null,
-                      child: Icon(Icons.arrow_back_ios_new_rounded, size: 16, color: context.textPrimary),
+                      child: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 16,
+                        color: context.textPrimary,
+                      ),
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(color: context.surfaceInner, borderRadius: BorderRadius.circular(20), border: Border.all(color: context.border)),
-                    child: Text(widget.mode == 'new-cycle' ? 'SIKLUS BARU' : 'LANGKAH 1 DARI 1', style: TextStyle(color: context.textSecondary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0)),
+                    decoration: BoxDecoration(
+                      color: context.surfaceInner,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: context.border),
+                    ),
+                    child: Text(
+                      widget.mode == 'new-cycle' ? 'SIKLUS BARU' : 'LANGKAH 1 DARI 1',
+                      style: TextStyle(
+                        color: context.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -180,40 +214,145 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Target & Profil Fisik', style: TextStyle(color: context.textPrimary, fontSize: 22, fontWeight: FontWeight.w900)),
+                    Text(
+                      'Target & Profil Fisik',
+                      style: TextStyle(
+                        color: context.textPrimary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const SizedBox(height: 6),
-                    Text('Data esensial untuk perhitungan target kalori cerdas AI & generate Weekly Plan personal yang adaptif.', style: TextStyle(color: context.textSecondary, fontSize: 13, height: 1.4)),
+                    Text(
+                      'Data esensial untuk perhitungan target kalori cerdas AI & generate Weekly Plan personal yang adaptif.',
+                      style: TextStyle(
+                        color: context.textSecondary,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
                     const SizedBox(height: 24),
-                    
+
+                    // SECTION 1: PROFIL DASAR
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Profil Dasar Klien', style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
-                        Text('KLIEN_PROFILES', style: TextStyle(color: context.textMuted, fontSize: 10, letterSpacing: 1.0)),
+                        Text(
+                          'Profil Dasar Klien',
+                          style: TextStyle(
+                            color: context.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'KLIEN PROFILES',
+                          style: TextStyle(
+                            color: context.textMuted,
+                            fontSize: 10,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
                     Container(
                       padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(color: context.card, borderRadius: BorderRadius.circular(20), border: Border.all(color: context.border)),
+                      decoration: BoxDecoration(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: context.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Jenis Kelamin Biologis • Wajib', style: TextStyle(color: context.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Jenis Kelamin Biologis Wajib',
+                            style: TextStyle(
+                              color: context.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              Expanded(child: _buildGenderBtn('Pria', Icons.male_rounded, _isMale, () => setState(() => _isMale = true))),
+                              Expanded(
+                                child: _buildGenderBtn('Pria', Icons.male_rounded, isMale,
+                                    () => setState(() => isMale = true)),
+                              ),
                               const SizedBox(width: 10),
-                              Expanded(child: _buildGenderBtn('Wanita', Icons.female_rounded, !_isMale, () => setState(() => _isMale = false))),
+                              Expanded(
+                                child: _buildGenderBtn('Wanita', Icons.female_rounded, !isMale,
+                                    () => setState(() => isMale = false)),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 20),
                           Row(
                             children: [
-                              Expanded(child: _buildCounterField('USIA', 'tahun', _ageController, () => setState(() => _age > 14 ? _age-- : null), () => setState(() => _age < 85 ? _age++ : null), (v) => setState(() => _age = int.parse(v)))),
-                              Container(width: 1, height: 50, color: context.border, margin: const EdgeInsets.symmetric(horizontal: 16)),
-                              Expanded(child: _buildCounterField('TINGGI', 'cm', _heightController, () => setState(() => _height > 120 ? _height-- : null), () => setState(() => _height < 230 ? _height++ : null), (v) => setState(() => _height = int.parse(v)))),
+                              // PENYESUAIAN USIA AGAR KONTROL & TEKS SINKRON
+                              Expanded(
+                                child: _buildCounterField(
+                                  'USIA',
+                                  'tahun',
+                                  _ageController,
+                                  () {
+                                    if (_age > 14) {
+                                      setState(() {
+                                        _age--;
+                                        _ageController.text = _age.toString();
+                                      });
+                                    }
+                                  },
+                                  () {
+                                    if (_age < 85) {
+                                      setState(() {
+                                        _age++;
+                                        _ageController.text = _age.toString();
+                                      });
+                                    }
+                                  },
+                                  (v) {
+                                    final val = int.tryParse(v);
+                                    if (val != null) setState(() => _age = val);
+                                  },
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 50,
+                                color: context.border,
+                                margin: const EdgeInsets.symmetric(horizontal: 16),
+                              ),
+                              // PENYESUAIAN TINGGI AGAR KONTROL & TEKS SINKRON
+                              Expanded(
+                                child: _buildCounterField(
+                                  'TINGGI',
+                                  'cm',
+                                  _heightController,
+                                  () {
+                                    if (_height > 120) {
+                                      setState(() {
+                                        _height--;
+                                        _heightController.text = _height.toString();
+                                      });
+                                    }
+                                  },
+                                  () {
+                                    if (_height < 230) {
+                                      setState(() {
+                                        _height++;
+                                        _heightController.text = _height.toString();
+                                      });
+                                    }
+                                  },
+                                  (v) {
+                                    final val = int.tryParse(v);
+                                    if (val != null) setState(() => _height = val);
+                                  },
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -221,17 +360,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     const SizedBox(height: 24),
 
+                    // SECTION 2: ALERGI
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Alergi & Preferensi Diet', style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
-                        Text('Pilih multi', style: TextStyle(color: context.textMuted, fontSize: 10)),
+                        Text(
+                          'Alergi & Preferensi Diet',
+                          style: TextStyle(
+                            color: context.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Pilih multi',
+                          style: TextStyle(color: context.textMuted, fontSize: 10),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
                     Container(
                       padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(color: context.card, borderRadius: BorderRadius.circular(20), border: Border.all(color: context.border)),
+                      decoration: BoxDecoration(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: context.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -245,11 +399,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: active ? (opt.contains('Tidak') ? const Color(0xFFE0F2F1) : const Color(0xFFFFECE5)) : context.surfaceInner,
+                                    color: active
+                                        ? (opt.contains('Tidak')
+                                            ? const Color(0xFFE0F2F1)
+                                            : const Color(0xFFFFECE5))
+                                        : context.surfaceInner,
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: active ? (opt.contains('Tidak') ? Colors.teal : accent) : context.border),
+                                    border: Border.all(
+                                      color: active
+                                          ? (opt.contains('Tidak') ? Colors.teal : accent)
+                                          : context.border,
+                                    ),
                                   ),
-                                  child: Text(opt, style: TextStyle(color: active ? (opt.contains('Tidak') ? Colors.teal[700] : accent) : context.textSecondary, fontSize: 12, fontWeight: FontWeight.bold)),
+                                  child: Text(
+                                    opt,
+                                    style: TextStyle(
+                                      color: active
+                                          ? (opt.contains('Tidak') ? Colors.teal[700] : accent)
+                                          : context.textSecondary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               );
                             }).toList(),
@@ -257,7 +428,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           const SizedBox(height: 16),
                           Container(
                             height: 42,
-                            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: context.border))),
+                            decoration: BoxDecoration(
+                              border: Border(bottom: BorderSide(color: context.border)),
+                            ),
                             child: TextField(
                               controller: _otherAllergyController,
                               style: TextStyle(color: context.textPrimary, fontSize: 13),
@@ -265,7 +438,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 hintText: 'Ada batasan lain? (cth: Vegan, Halal)',
                                 hintStyle: TextStyle(color: context.textMuted, fontSize: 12),
                                 border: InputBorder.none,
-                                suffixIcon: Icon(Icons.edit_note_rounded, color: context.textMuted, size: 18),
+                                suffixIcon: Icon(Icons.edit_note_rounded,
+                                    color: context.textMuted, size: 18),
                               ),
                             ),
                           ),
@@ -274,21 +448,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     const SizedBox(height: 24),
 
+                    // SECTION 3: SIKLUS & TARGET PROGRES
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Siklus & Target Progres', style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
-                        Text('PROGRESS_CYCLES', style: TextStyle(color: context.textMuted, fontSize: 10)),
+                        Text(
+                          'Siklus & Target Progres',
+                          style: TextStyle(
+                            color: context.textPrimary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'PROGRESS CYCLES',
+                          style: TextStyle(color: context.textMuted, fontSize: 10),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 14),
                     Container(
                       padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(color: context.card, borderRadius: BorderRadius.circular(20), border: Border.all(color: context.border)),
+                      decoration: BoxDecoration(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: context.border),
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Arah Sasaran Siklus Ini', style: TextStyle(color: context.textSecondary, fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Arah Sasaran Siklus Ini',
+                            style: TextStyle(
+                              color: context.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           Row(
                             children: [
@@ -298,28 +494,207 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ],
                           ),
                           const SizedBox(height: 20),
-                          _buildWeightRow('Berat Badan Awal', 'Masuk ke log berat perdana', _currentWeightController, () => setState(() => _currentWeight -= 0.5), () => setState(() => _currentWeight += 0.5), (v) => setState(() => _currentWeight = double.parse(v))),
-                          Padding(padding: const EdgeInsets.symmetric(vertical: 14), child: Divider(color: context.border)),
-                          _buildWeightRow('Berat Badan Tujuan', 'Target akhir siklus', _targetWeightController, () => setState(() => _targetWeight -= 0.5), () => setState(() => _targetWeight += 0.5), (v) => setState(() => _targetWeight = double.parse(v)), isTarget: true),
+                          
+                          // PENYESUAIAN BERAT BADAN AWAL
+                          _buildWeightRow(
+                            'Berat Badan Awal',
+                            'Masuk ke log berat perdana',
+                            _currentWeightController,
+                            () {
+                              setState(() {
+                                if (_currentWeight > 30) {
+                                  _currentWeight -= 0.5;
+                                  _currentWeightController.text = _currentWeight.toStringAsFixed(1);
+                                }
+                              });
+                            },
+                            () {
+                              setState(() {
+                                _currentWeight += 0.5;
+                                _currentWeightController.text = _currentWeight.toStringAsFixed(1);
+                              });
+                            },
+                            (v) {
+                              final val = double.tryParse(v);
+                              if (val != null) setState(() => _currentWeight = val);
+                            },
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: Divider(color: context.border),
+                          ),
+
+                          // PENYESUAIAN BERAT BADAN TARGET
+                          _buildWeightRow(
+                            'Berat Badan Tujuan',
+                            'Target akhir siklus',
+                            _targetWeightController,
+                            () {
+                              setState(() {
+                                if (_targetWeight > 30) {
+                                  _targetWeight -= 0.5;
+                                  _targetWeightController.text = _targetWeight.toStringAsFixed(1);
+                                }
+                              });
+                            },
+                            () {
+                              setState(() {
+                                _targetWeight += 0.5;
+                                _targetWeightController.text = _targetWeight.toStringAsFixed(1);
+                              });
+                            },
+                            (v) {
+                              final val = double.tryParse(v);
+                              if (val != null) setState(() => _targetWeight = val);
+                            },
+                            isTarget: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // SECTION 4: DURASI SIKLUS KOMITMEN
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: context.card,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: context.border),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Durasi Siklus Komitmen',
+                            style: TextStyle(
+                              color: context.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              _buildDurationCard(30, 'Hari (Sprint)', false, accent),
+                              const SizedBox(width: 10),
+                              _buildDurationCard(60, 'Hari (Ideal)', true, accent),
+                              const SizedBox(width: 10),
+                              _buildDurationCard(90, 'Hari (Transf.)', false, accent),
+                            ],
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 32),
 
+                    // TOMBOL UTAMA
                     SizedBox(
+                      width: double.infinity,
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: _isSaving ? null : _submitData,
-                        style: ElevatedButton.styleFrom(backgroundColor: accent, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                        onPressed: _isSaving ? null : submitData,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                        ),
                         child: _isSaving
-                            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white))
-                            : const Text('MULAI GENERATE AI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, letterSpacing: 0.5)),
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Simpan & Mulai Siklus',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // WIDGET HELPER DURASI SIKLUS
+  Widget _buildDurationCard(int days, String label, bool isBest, Color accent) {
+    final active = _selectedDuration == days;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedDuration = days),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+              decoration: BoxDecoration(
+                color: active ? const Color(0xFFFFECE5) : context.surfaceInner,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: active ? accent : context.border,
+                  width: active ? 1.8 : 1.0,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$days',
+                    style: TextStyle(
+                      color: active ? accent : context.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: active ? accent : context.textSecondary,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isBest)
+              Positioned(
+                top: -8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: accent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    'BEST',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -334,31 +709,68 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         decoration: BoxDecoration(
           color: active ? const Color(0xFFFF5520) : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: active ? const Color(0xFFFF5520) : context.border),
+          border: Border.all(
+            color: active ? const Color(0xFFFF5520) : context.border,
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 16, color: active ? Colors.white : context.textSecondary),
             const SizedBox(width: 6),
-            Text(label, style: TextStyle(color: active ? Colors.white : context.textSecondary, fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(
+              label,
+              style: TextStyle(
+                color: active ? Colors.white : context.textSecondary,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCounterField(String label, String unit, TextEditingController ctrl, VoidCallback onDec, VoidCallback onInc, Function(String) onChanged) {
+  Widget _buildCounterField(
+    String label,
+    String unit,
+    TextEditingController ctrl,
+    VoidCallback onDec,
+    VoidCallback onInc,
+    Function(String) onChanged,
+  ) {
     return Column(
       children: [
-        Text(label, style: TextStyle(color: context.textMuted, fontSize: 10, fontWeight: FontWeight.bold)),
+        Text(
+          label,
+          style: TextStyle(color: context.textMuted, fontSize: 10, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 10),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            IntrinsicWidth(child: TextField(controller: ctrl, keyboardType: TextInputType.number, inputFormatters: [FilteringTextInputFormatter.digitsOnly], textAlign: TextAlign.center, style: TextStyle(color: context.textPrimary, fontSize: 24, fontWeight: FontWeight.bold), decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.zero, border: InputBorder.none), onChanged: onChanged)),
+            IntrinsicWidth(
+              child: TextField(
+                controller: ctrl,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: context.textPrimary,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: const InputDecoration(
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                  border: InputBorder.none,
+                ),
+                onChanged: onChanged,
+              ),
+            ),
             const SizedBox(width: 4),
             Text(unit, style: TextStyle(color: context.textMuted, fontSize: 11)),
           ],
@@ -382,19 +794,48 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       onTap: () => setState(() => _targetGoalIndex = index),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(color: active ? const Color(0xFFFF5520) : context.surfaceInner, borderRadius: BorderRadius.circular(16), border: Border.all(color: active ? const Color(0xFFFF5520) : context.border)),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFFFF5520) : context.surfaceInner,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: active ? const Color(0xFFFF5520) : context.border,
+          ),
+        ),
         child: Column(
           children: [
-            Text(title, style: TextStyle(color: active ? Colors.white : context.textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
+            Text(
+              title,
+              style: TextStyle(
+                color: active ? Colors.white : context.textPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
             const SizedBox(height: 2),
-            Text(sub, style: TextStyle(color: active ? Colors.white70 : context.textMuted, fontSize: 9, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+            Text(
+              sub,
+              style: TextStyle(
+                color: active ? Colors.white70 : context.textMuted,
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildWeightRow(String title, String sub, TextEditingController ctrl, VoidCallback onDec, VoidCallback onInc, Function(String) onChanged, {bool isTarget = false}) {
+  Widget _buildWeightRow(
+    String title,
+    String sub,
+    TextEditingController ctrl,
+    VoidCallback onDec,
+    VoidCallback onInc,
+    Function(String) onChanged, {
+    bool isTarget = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -402,7 +843,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(
+                title,
+                style: TextStyle(
+                  color: context.textPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
               const SizedBox(height: 2),
               Text(sub, style: TextStyle(color: context.textMuted, fontSize: 11)),
             ],
@@ -418,7 +866,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    IntrinsicWidth(child: TextField(controller: ctrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), textAlign: TextAlign.center, style: TextStyle(color: context.textPrimary, fontSize: 22, fontWeight: FontWeight.bold), decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.zero, border: InputBorder.none), onChanged: onChanged)),
+                    IntrinsicWidth(
+                      child: TextField(
+                        controller: ctrl,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: context.textPrimary,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                          border: InputBorder.none,
+                        ),
+                        onChanged: onChanged,
+                      ),
+                    ),
                     const SizedBox(width: 2),
                     Text('kg', style: TextStyle(color: context.textMuted, fontSize: 11)),
                   ],
@@ -436,7 +901,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget _buildBtn(IconData icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(width: 28, height: 28, decoration: BoxDecoration(color: context.surfaceInner, shape: BoxShape.circle, border: Border.all(color: context.border)), child: Icon(icon, size: 14, color: context.textPrimary)),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: context.surfaceInner,
+          shape: BoxShape.circle,
+          border: Border.all(color: context.border),
+        ),
+        child: Icon(icon, size: 14, color: context.textPrimary),
+      ),
     );
   }
 }
