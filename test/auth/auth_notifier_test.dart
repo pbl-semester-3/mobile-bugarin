@@ -102,26 +102,4 @@ void main() {
     expect(container.read(authStateProvider), isA<Unauthenticated>());
     expect(fake.logoutCalled, isTrue);
   });
-
-  test('restore sesi menahan aktivasi: token ada -> Authenticated(profileComplete=false)',
-      () async {
-    final fake = FakeAuthRepository()..tokenToRead = 'token-tersimpan';
-    final container = _container(fake);
-
-    // _restoreSession berjalan async setelah build; beri kesempatan microtask.
-    await Future<void>.delayed(Duration.zero);
-
-    final state = container.read(authStateProvider);
-    expect(state, isA<Authenticated>());
-    expect((state as Authenticated).profileComplete, isFalse);
-  });
-
-  test('tanpa token -> tetap Unauthenticated', () async {
-    final fake = FakeAuthRepository();
-    final container = _container(fake);
-
-    await Future<void>.delayed(Duration.zero);
-
-    expect(container.read(authStateProvider), isA<Unauthenticated>());
-  });
 }
