@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../shared/widgets/bugarin_header.dart';
 
 class ProfilScreen extends ConsumerStatefulWidget {
@@ -127,24 +128,14 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              // 1. Bersihkan seluruh sesi/token yang tersimpan
-              await _storage.deleteAll();
+              // Bersihkan sesi auth lewat notifier (POST logout + clear token).
+              await ref.read(authStateProvider.notifier).logout();
 
               if (!ctx.mounted) return;
               Navigator.pop(ctx); // Tutup pop-up dialog
 
-              // 2. Arahkan kembali ke Landing/Welcome Page
-              try {
-                // Mencoba navigasi via GoRouter
-                context.go('/welcome');
-              } catch (_) {
-                try {
-                  context.go('/');
-                } catch (_) {
-                  // Fallback Navigator biasa
-                  Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
-                }
-              }
+              // Arahkan ke Login (guard router juga menegakkan ini).
+              if (mounted) context.go('/login');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFE53935),

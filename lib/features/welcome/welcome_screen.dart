@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../providers/has_seen_welcome_provider.dart';
+import '../../services/token_storage.dart';
 import '../auth/login_screen.dart';
 
-class WelcomeScreen extends StatefulWidget {
+class WelcomeScreen extends ConsumerStatefulWidget {
   const WelcomeScreen({super.key});
 
   @override
-  State<WelcomeScreen> createState() => _WelcomeScreenState();
+  ConsumerState<WelcomeScreen> createState() => _WelcomeScreenState();
 }
 
-class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateMixin {
+class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProviderStateMixin {
   late final AnimationController _bounceController;
   late final Animation<double> _bounceAnimation;
   late final AnimationController _sheetAnimationController;
@@ -22,6 +25,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
   @override
   void initState() {
     super.initState();
+    _markWelcomeSeen();
     _bounceController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1300),
@@ -51,6 +55,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> with TickerProviderStateM
     _bounceController.dispose();
     _sheetAnimationController.dispose();
     super.dispose();
+  }
+
+  // Welcome hanya untuk pembukaan app pertama kali — tandai sudah dibuka
+  // supaya pembukaan berikutnya langsung ke Login (lihat auth guard).
+  void _markWelcomeSeen() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(hasSeenWelcomeProvider.notifier).state = true;
+      TokenStorage().setHasSeenWelcome();
+    });
   }
 
   void _openAuthSheet({required bool isLogin}) {

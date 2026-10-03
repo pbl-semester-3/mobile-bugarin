@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../providers/auth_provider.dart';
+import 'data/auth_repository.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   final bool initialIsLogin;
   const LoginScreen({super.key, this.initialIsLogin = true});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _storage = const FlutterSecureStorage();
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   late bool _isLoginTab;
 
   final _loginIdentifierController = TextEditingController();
@@ -24,7 +25,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
-  String? _socialLoadingProvider;
 
   @override
   void initState() {
@@ -46,69 +46,65 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleSubmit() async {
     setState(() => _isLoading = true);
     try {
-      String userName = 'Sobat Bugarin';
-      if (!_isLoginTab && _registerNameController.text.trim().isNotEmpty) {
-        userName = _registerNameController.text.trim();
-      } else if (_isLoginTab && _loginIdentifierController.text.trim().isNotEmpty) {
-        final id = _loginIdentifierController.text.trim();
-        userName = id.contains('@') ? id.split('@').first : id;
-      }
-      
-      await _storage.write(key: 'user_name', value: userName);
-      await _storage.write(key: 'auth_token', value: 'token_email_bugarin_dummy');
-      await Future.delayed(const Duration(milliseconds: 600));
-      
-      if (!mounted) return;
-      context.go('/onboarding');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: const Color(0xFFEF4444), content: Text('Terjadi kesalahan: $e')),
+      final notifier = ref.read(authStateProvider.notifier);
+      if (_isLoginTab) {
+        await notifier.login(
+          emailOrUsername: _loginIdentifierController.text.trim(),
+          password: _loginPasswordController.text,
+        );
+      } else {
+        await notifier.register(
+          nama: _registerNameController.text.trim(),
+          email: _registerEmailController.text.trim(),
+          username: _registerUsernameController.text.trim(),
+          password: _registerPasswordController.text,
         );
       }
+
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) navigator.pop(); // tutup bottom sheet bila ada
+      if (mounted) context.go('/');
+    } on AuthException catch (e) {
+      _showAuthError(e.message);
+    } catch (e) {
+      _showAuthError('Terjadi kesalahan: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _handleSocialAuth(String provider) async {
-    if (_socialLoadingProvider != null || _isLoading) return;
-    setState(() => _socialLoadingProvider = provider);
-    try {
-      await Future.delayed(const Duration(milliseconds: 1200));
-      final socialUserName = provider == 'Google' ? 'Alex Rivera' : 'Apple Member';
-      await _storage.write(key: 'user_name', value: socialUserName);
-      await _storage.write(key: 'auth_token', value: 'oauth_token_${provider.toLowerCase()}_active');
-      
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: context.surfaceInner,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle_rounded, color: Color(0xFF3EE5B4), size: 20),
-              const SizedBox(width: 10),
-              Text(
-                'Berhasil terhubung dengan $provider!',
-                style: TextStyle(color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
-              ),
-            ],
+  void _showAuthError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+      ),
+    );
+  }
+
+  // Social auth belum punya backend OAuth — ditandai jelas supaya tidak
+  // menulis token dummy ke storage (menjaga sesi auth tetap bersih).
+  void _handleSocialAuth(String provider) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: context.surfaceInner,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Text(
+          'Masuk dengan $provider belum tersedia.',
+          style: TextStyle(
+            color: context.textPrimary,
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
           ),
-          duration: const Duration(seconds: 1),
         ),
-      );
-      context.go('/onboarding');
-    } catch (err) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(backgroundColor: const Color(0xFFEF4444), content: Text('Gagal masuk dengan $provider: $err')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _socialLoadingProvider = null);
-    }
+      ),
+    );
   }
 
   @override
@@ -231,9 +227,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 18),
                   Row(
                     children: [
-                      Expanded(child: _SocialAuthCard(label: 'Google', customIcon: const _GoogleLogoWidget(size: 20), isLoading: _socialLoadingProvider == 'Google', onTap: () => _handleSocialAuth('Google'))),
+                      Expanded(child: _SocialAuthCard(label: 'Google', customIcon: const _GoogleLogoWidget(size: 20), isLoading: false, onTap: () => _handleSocialAuth('Google'))),
                       const SizedBox(width: 12),
-                      Expanded(child: _SocialAuthCard(label: 'Apple', customIcon: Icon(Icons.apple, color: context.textPrimary, size: 22), isLoading: _socialLoadingProvider == 'Apple', onTap: () => _handleSocialAuth('Apple'))),
+                      Expanded(child: _SocialAuthCard(label: 'Apple', customIcon: Icon(Icons.apple, color: context.textPrimary, size: 22), isLoading: false, onTap: () => _handleSocialAuth('Apple'))),
                     ],
                   ),
                 ],

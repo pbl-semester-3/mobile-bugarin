@@ -18,6 +18,7 @@ class KlienProfile {
   final String? email;
   final String? username;
   final String? tema; // 'siang' | 'malam'
+  final String? role; // 'klien' | 'pt' | 'admin'
 
   final bool profileComplete;
   final ProgressCycle? activeCycle;
@@ -34,6 +35,7 @@ class KlienProfile {
     this.email,
     this.username,
     this.tema,
+    this.role,
     required this.profileComplete,
     this.activeCycle,
   });
@@ -57,6 +59,7 @@ class KlienProfile {
       email: userMap['email'] as String?,
       username: userMap['username'] as String?,
       tema: userMap['tema'] as String?,
+      role: userMap['role'] as String?,
       profileComplete: json['profileComplete'] as bool? ?? false,
       activeCycle:
           active is Map ? ProgressCycle.fromJson(Map<String, dynamic>.from(active)) : null,

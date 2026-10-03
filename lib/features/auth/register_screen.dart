@@ -1,10 +1,9 @@
-// ignore: unused_import
-import '../../providers/auth_provider.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../providers/auth_provider.dart';
+import 'data/auth_repository.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -43,24 +42,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      await Future.delayed(const Duration(milliseconds: 600));
+      await ref.read(authStateProvider.notifier).register(
+            nama: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            username: _usernameController.text.trim(),
+            password: _passwordController.text,
+          );
 
-      // Saat backend temanmu aktif, cukup aktifkan baris ini:
-      // await ref.read(authStateProvider.notifier).register(
-      //   name: _nameController.text.trim(),
-      //   username: _usernameController.text.trim(),
-      //   email: _emailController.text.trim(),
-      //   password: _passwordController.text,
-      // );
-
-      // Simpan penanda otentikasi sementara ke penyimpanan lokal
-      const storage = FlutterSecureStorage();
-      await storage.write(key: 'auth_token', value: 'dummy_token_registered');
-
-      if (mounted) {
-        // Setelah registrasi berhasil, pengguna diarahkan wajib mengisi profil fisik
-        context.go('/onboarding');
-      }
+      if (mounted) context.go('/');
+    } on AuthException catch (e) {
+      setState(() => _errorMessage = e.message);
     } catch (e) {
       setState(() {
         _errorMessage = 'Gagal mendaftar. Silakan periksa kembali data yang diisi.';

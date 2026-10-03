@@ -10,6 +10,11 @@ sealed class AuthState {
   const AuthState();
 }
 
+/// State awal saat sesi masih di-restore (token belum divalidasi ke backend).
+final class AuthUnknown extends AuthState {
+  const AuthUnknown();
+}
+
 final class Unauthenticated extends AuthState {
   const Unauthenticated();
 }
@@ -30,20 +35,29 @@ class AuthStateNotifier extends _$AuthStateNotifier {
   @override
   AuthState build() {
     _restoreSession();
-    return const Unauthenticated();
+    return const AuthUnknown();
   }
 
-  // CATATAN: restore sesi nyata (panggil `GET /klien/profile` untuk cek
-  // `profileComplete`) sengaja DITAHAN sampai wiring UI disetujui — lihat
-  // Bugarin_PRD_Mobile.md bab 2 (Auth guard logic). Untuk sekarang hanya
-  // membaca keberadaan token.
+  /// Restore sesi nyata: bila ada token, validasi lewat `GET /klien/profile`
+  /// untuk mengambil `profileComplete` (dipakai auth guard). Token tidak valid
+  /// ditangani interceptor Dio (401 → logout) dan fallback di sini.
   Future<void> _restoreSession() async {
     try {
-      final token = await ref.read(authRepositoryProvider).readToken();
-      if (token == null) return;
-      state = const Authenticated(role: 'klien', profileComplete: false);
+      final repo = ref.read(authRepositoryProvider);
+      final token = await repo.readToken();
+      if (token == null) {
+        state = const Unauthenticated();
+        return;
+      }
+
+      final profile = await repo.getProfile();
+      state = Authenticated(
+        role: profile.role ?? 'klien',
+        profileComplete: profile.profileComplete,
+        profile: profile,
+      );
     } catch (_) {
-      // Bila storage belum siap, biarkan state Unauthenticated.
+      state = const Unauthenticated();
     }
   }
 
