@@ -51,7 +51,9 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        builder: (context, state) => OnboardingScreen(
+          mode: state.uri.queryParameters['mode'] ?? 'first-time',
+        ),
       ),
       GoRoute(
         path: '/',

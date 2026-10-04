@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_error.dart';
+import '../profil/data/profile_repository_provider.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   final String mode;
   const OnboardingScreen({this.mode = 'first-time', super.key});
 
   @override
-  State<OnboardingScreen> createState() => OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => OnboardingScreenState();
 }
 
-class OnboardingScreenState extends State<OnboardingScreen> {
+class OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _storage = const FlutterSecureStorage();
   
   bool isMale = true;
@@ -127,9 +131,33 @@ class OnboardingScreenState extends State<OnboardingScreen> {
     return (tdee + 350).round().clamp(1500, 5000); // Naik
   }
 
+  String get _tujuan => _targetGoalIndex == 0 ? 'turun_bb' : 'naik_bb';
+
   Future<void> submitData() async {
     setState(() => _isSaving = true);
     try {
+      final allergyStr = _selectedAllergies.join(', ') +
+          (_otherAllergyController.text.isNotEmpty
+              ? ', ${_otherAllergyController.text}'
+              : '');
+
+      // Kirim ke backend. Simpanan lokal di bawah dipertahankan sementara
+      // agar layar Dashboard/Profil yang belum di-wire tidak berubah perilakunya
+      // (dibersihkan saat Step 2).
+      final repo = ref.read(profileRepositoryProvider);
+      await repo.updateProfile(
+        usia: _age,
+        jenisKelamin: isMale ? 'pria' : 'wanita',
+        alergiMakanan: allergyStr,
+        tinggiBadanCm: _height.toDouble(),
+      );
+      await repo.startNewCycle(
+        bbTujuanKg: _targetWeight,
+        tujuan: _tujuan,
+        durasiHari: _selectedDuration,
+        bbAwalKg: widget.mode == 'new-cycle' ? null : _currentWeight,
+      );
+
       await _storage.write(key: 'has_completed_profile', value: 'true');
       await _storage.write(key: 'user_gender', value: isMale ? 'male' : 'female');
       await _storage.write(key: 'user_age', value: '$_age');
@@ -138,21 +166,36 @@ class OnboardingScreenState extends State<OnboardingScreen> {
       await _storage.write(key: 'user_target_weight', value: '$_targetWeight');
       await _storage.write(key: 'daily_calorie_target', value: '$_calculatedCalories');
       await _storage.write(key: 'cycle_duration_days', value: '$_selectedDuration');
-
-      final allergyStr = _selectedAllergies.join(', ') +
-          (_otherAllergyController.text.isNotEmpty ? ', ${_otherAllergyController.text}' : '');
       await _storage.write(key: 'user_allergies', value: allergyStr);
 
-      await Future.delayed(const Duration(milliseconds: 300));
+      // Sinkronkan state auth agar `profileComplete` ikut ter-update.
+      await ref.read(authStateProvider.notifier).refreshProfile();
+
       if (!mounted) return;
       if (widget.mode == 'new-cycle') {
         context.pop();
       } else {
         context.go('/');
       }
+    } on ApiException catch (e) {
+      _showError(e.message);
+    } catch (e) {
+      _showError('Terjadi kesalahan: $e');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+
+  void _showError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+      ),
+    );
   }
 
   @override

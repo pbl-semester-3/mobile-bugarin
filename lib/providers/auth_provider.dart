@@ -109,6 +109,25 @@ class AuthStateNotifier extends _$AuthStateNotifier {
     }
   }
 
+  /// Ambil ulang profil dari backend dan sinkronkan state auth
+  /// (dipakai setelah submit Onboarding agar `profileComplete` ikut update).
+  Future<KlienProfile?> refreshProfile() async {
+    try {
+      final profile = await ref.read(authRepositoryProvider).getProfile();
+      final current = state;
+      final role =
+          profile.role ?? (current is Authenticated ? current.role : 'klien');
+      state = Authenticated(
+        role: role,
+        profileComplete: profile.profileComplete,
+        profile: profile,
+      );
+      return profile;
+    } on AuthException {
+      return null;
+    }
+  }
+
   void loginSuccess({required String role, required bool profileComplete}) {
     state = Authenticated(role: role, profileComplete: profileComplete);
   }

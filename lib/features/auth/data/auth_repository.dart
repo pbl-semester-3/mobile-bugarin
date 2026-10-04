@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../services/api_client.dart';
+import '../../../services/api_error.dart';
 import '../../../services/token_storage.dart';
 import '../models/klien_profile.dart';
 
@@ -12,19 +13,9 @@ class AuthResult {
   const AuthResult({required this.token, required this.role});
 }
 
-/// Error auth yang sudah dipetakan dari response backend.
-///
-/// [fieldErrors] terisi untuk error validasi Zod backend
-/// (`{ "error": { "fields": { "email": ["..."] } } }`).
-class AuthException implements Exception {
-  final String message;
-  final Map<String, List<String>> fieldErrors;
-
-  const AuthException(this.message, {this.fieldErrors = const {}});
-
-  @override
-  String toString() => message;
-}
+/// Alias lama untuk [ApiException] — dipertahankan agar kode/test auth
+/// yang sudah ada tetap kompatibel.
+typedef AuthException = ApiException;
 
 /// Kontrak repository auth — memudahkan unit test dengan fake di provider.
 abstract interface class AuthRepository {
@@ -88,7 +79,7 @@ class DioAuthRepository implements AuthRepository {
       final data = _unwrapData(response);
       return KlienProfile.fromJson(data);
     } on DioException catch (e) {
-      throw _mapDioException(e);
+      throw mapDioException(e);
     }
   }
 
@@ -120,7 +111,7 @@ class DioAuthRepository implements AuthRepository {
       await tokenStorage.save(token);
       return AuthResult(token: token, role: role);
     } on DioException catch (e) {
-      throw _mapDioException(e);
+      throw mapDioException(e);
     }
   }
 
@@ -131,46 +122,5 @@ class DioAuthRepository implements AuthRepository {
       throw const AuthException('Respons server tidak valid.');
     }
     return Map<String, dynamic>.from(data);
-  }
-
-  AuthException _mapDioException(DioException e) {
-    final body = e.response?.data;
-
-    if (body is Map && body['error'] != null) {
-      final error = body['error'];
-
-      if (error is Map && error['fields'] is Map) {
-        final fieldErrors = (error['fields'] as Map).map(
-          (key, value) => MapEntry(
-            key.toString(),
-            value is List
-                ? value.map((v) => v.toString()).toList()
-                : <String>[value.toString()],
-          ),
-        );
-        final first = fieldErrors.values.isEmpty ? null : fieldErrors.values.first;
-        return AuthException(
-          (first != null && first.isNotEmpty)
-              ? first.first
-              : 'Data yang dikirim tidak valid.',
-          fieldErrors: fieldErrors,
-        );
-      }
-
-      if (error is String && error.isNotEmpty) {
-        return AuthException(error);
-      }
-    }
-
-    if (e.type == DioExceptionType.connectionTimeout ||
-        e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.sendTimeout ||
-        e.type == DioExceptionType.connectionError) {
-      return const AuthException(
-        'Tidak dapat terhubung ke server. Periksa koneksi Anda.',
-      );
-    }
-
-    return const AuthException('Terjadi kesalahan pada server. Coba lagi.');
   }
 }
