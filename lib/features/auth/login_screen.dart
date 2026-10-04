@@ -68,18 +68,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (!_isLoginTab) {
         // --- LOGIKA REGISTER ---
-        if (_registerNameController.text.isEmpty ||
-            _registerEmailController.text.isEmpty ||
-            _registerPasswordController.text.isEmpty) {
-          setState(() => _errorMessage = 'Semua kolom pendaftaran wajib diisi.');
+        final nama = _registerNameController.text.trim();
+        final username = _registerUsernameController.text.trim();
+        final email = _registerEmailController.text.trim();
+        final password = _registerPasswordController.text;
+
+        // Validasi klien diselaraskan dengan registerSchema backend (Zod).
+        if (nama.length < 2) {
+          setState(() => _errorMessage = 'Nama minimal 2 karakter.');
+          return;
+        }
+        if (username.length < 3) {
+          setState(() => _errorMessage = 'Username minimal 3 karakter.');
+          return;
+        }
+        if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+          setState(() => _errorMessage = 'Format email tidak valid.');
+          return;
+        }
+        if (password.length < 8) {
+          setState(() => _errorMessage = 'Kata sandi minimal 8 karakter.');
           return;
         }
 
         await notifier.register(
-          nama: _registerNameController.text.trim(),
-          email: _registerEmailController.text.trim(),
-          username: _registerUsernameController.text.trim(),
-          password: _registerPasswordController.text,
+          nama: nama,
+          email: email,
+          username: username,
+          password: password,
         );
 
         if (!mounted) return;

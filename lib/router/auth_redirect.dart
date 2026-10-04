@@ -9,7 +9,9 @@ String? resolveAuthRedirect({
   required bool hasSeenWelcome,
   required String location,
 }) {
-  const authRoutes = {'/login', '/register'};
+  // `/register` tidak lagi punya route sendiri (pendaftaran lewat toggle di
+  // Login), jadi tidak dianggap halaman auth yang boleh diakses langsung.
+  const authRoutes = {'/login'};
 
   // Sesi masih dipulihkan → tahan di splash sampai status jelas.
   if (authState is AuthUnknown) {

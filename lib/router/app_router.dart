@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../features/auth/login_screen.dart';
-import '../features/auth/register_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
 import '../features/splash/splash_screen.dart';
 import '../features/welcome/welcome_screen.dart';
@@ -44,10 +43,6 @@ GoRouter appRouter(Ref ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/register',
-        builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
         path: '/onboarding',
