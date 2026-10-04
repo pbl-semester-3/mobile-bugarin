@@ -1,4 +1,5 @@
 import 'package:bugarin_mobile/db/cache_repository.dart';
+import 'package:bugarin_mobile/features/dashboard/models/dashboard_summary.dart';
 import 'package:bugarin_mobile/features/progres/data/master_repository.dart';
 import 'package:bugarin_mobile/features/progres/data/progres_repository.dart';
 import 'package:bugarin_mobile/features/progres/models/master_data.dart';
@@ -63,6 +64,18 @@ class FakeCacheRepository implements CacheRepository {
 
   @override
   Future<WeeklyPlan?> getCachedWeeklyPlan() async => cachedWeeklyPlan;
+
+  DashboardSummary? cachedDashboard;
+  bool dashboardWritten = false;
+
+  @override
+  Future<void> cacheDashboardSummary(DashboardSummary summary) async {
+    cachedDashboard = summary;
+    dashboardWritten = true;
+  }
+
+  @override
+  Future<DashboardSummary?> getCachedDashboardSummary() async => cachedDashboard;
 }
 
 class FakeProgresRepository implements ProgresRepository {
