@@ -5,7 +5,7 @@ import '../../core/theme/theme_provider.dart';
 import '../../services/api_error.dart';
 import '../../shared/widgets/bugarin_header.dart';
 import '../dashboard/dashboard_screen.dart' show dashboardSummaryProvider;
-import 'data/master_repository_provider.dart';
+import 'data/progres_providers.dart';
 import 'data/progres_repository_provider.dart';
 import 'models/master_data.dart';
 import 'models/weekly_plan.dart';
@@ -25,26 +25,13 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
   final TextEditingController _durasiController = TextEditingController();
   final TextEditingController _jarakController = TextEditingController();
 
-  List<MasterOlahraga> _olahragaList = [];
-  List<MasterMakanan> _makananList = [];
   MasterOlahraga? _selectedOlahraga;
-
   final Map<int, double> _porsi = {};
   final Set<int> _selectedMealIds = {};
-
   final List<CreatedActivityLog> _submittedActivities = [];
-  WeeklyPlan? _weeklyPlan;
 
-  bool _memuat = true;
-  String? _errorMuat;
   bool _menyimpanAktivitas = false;
   bool _menyimpanMeal = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _muatData();
-  }
 
   @override
   void dispose() {
@@ -53,41 +40,6 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
     _durasiController.dispose();
     _jarakController.dispose();
     super.dispose();
-  }
-
-  Future<void> _muatData() async {
-    setState(() {
-      _memuat = true;
-      _errorMuat = null;
-    });
-    try {
-      final master = ref.read(masterRepositoryProvider);
-      final progres = ref.read(progresRepositoryProvider);
-      final hasil = await Future.wait([
-        master.getOlahraga(),
-        master.getMakanan(),
-        progres.getCurrentWeeklyPlan(),
-      ]);
-      if (!mounted) return;
-      final olahraga = hasil[0] as List<MasterOlahraga>;
-      final makanan = hasil[1] as List<MasterMakanan>;
-      setState(() {
-        _olahragaList = olahraga;
-        _makananList = makanan;
-        _weeklyPlan = hasil[2] as WeeklyPlan?;
-        _selectedOlahraga = olahraga.isNotEmpty ? olahraga.first : null;
-        for (final m in makanan) {
-          _porsi.putIfAbsent(m.id, () => 100);
-        }
-        _memuat = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _errorMuat = e is ApiException ? e.message : 'Gagal memuat data.';
-        _memuat = false;
-      });
-    }
   }
 
   void _toast(String pesan, {bool error = false}) {
@@ -104,12 +56,13 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
       );
   }
 
-  double _totalKaloriMasuk() {
+  double _totalKaloriMasuk(List<MasterMakanan> makananList) {
     double total = 0;
     for (final id in _selectedMealIds) {
-      final makanan = _makananList.firstWhere((m) => m.id == id);
+      final matches = makananList.where((m) => m.id == id);
+      if (matches.isEmpty) continue;
       final gram = _porsi[id] ?? 100;
-      total += makanan.kaloriPer100g * (gram / 100);
+      total += matches.first.kaloriPer100g * (gram / 100);
     }
     return total;
   }
@@ -117,8 +70,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
   int get _totalKaloriTerbakar =>
       _submittedActivities.fold(0, (sum, a) => sum + a.kaloriTerbakar);
 
-  Future<void> _submitActivity() async {
-    final olahraga = _selectedOlahraga;
+  Future<void> _submitActivity(MasterOlahraga? olahraga) async {
     if (olahraga == null) {
       _toast('Pilih jenis olahraga dulu.', error: true);
       return;
@@ -151,7 +103,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
         _durasiController.clear();
         _jarakController.clear();
       });
-      ref.invalidate(dashboardSummaryProvider); // streak & kalori berubah
+      ref.invalidate(dashboardSummaryProvider);
       _toast('Aktivitas tersimpan. Terbakar ${log.kaloriTerbakar} kkal.');
     } catch (e) {
       _toast(e is ApiException ? e.message : 'Gagal menyimpan aktivitas.', error: true);
@@ -254,55 +206,96 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final masterAsync = ref.watch(masterDataProvider);
+    final plan = ref.watch(weeklyPlanProvider).value;
+
     return Scaffold(
       backgroundColor: context.bg,
       body: SafeArea(
-        child: _memuat
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF5520)))
-            : _errorMuat != null
-                ? _buildError()
-                : SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 100),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+        child: masterAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFFFF5520))),
+          error: (err, _) => _buildError(
+            err is ApiException ? err.message : 'Gagal memuat data.',
+          ),
+          data: (data) {
+            for (final m in data.makanan) {
+              _porsi.putIfAbsent(m.id, () => 100);
+            }
+            final selected = _selectedOlahraga ??
+                (data.olahraga.isNotEmpty ? data.olahraga.first : null);
+
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const BugarinHeader(subtitle: 'Progres'),
+                  const SizedBox(height: 22),
+                  Text('Progres Harian',
+                      style: TextStyle(
+                          color: context.textPrimary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.2)),
+                  const SizedBox(height: 4),
+                  Text('Pantau asupan nutrisi dan aktivitas latihan terpadu.',
+                      style: TextStyle(color: context.textSecondary, fontSize: 12)),
+                  if (data.fromCache) ...[
+                    const SizedBox(height: 10),
+                    _offlineNote(),
+                  ],
+                  const SizedBox(height: 18),
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: context.card,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: context.border),
+                    ),
+                    child: Row(
                       children: [
-                        const BugarinHeader(subtitle: 'Progres'),
-                        const SizedBox(height: 22),
-                        Text('Progres Harian',
-                            style: TextStyle(
-                                color: context.textPrimary,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.2)),
-                        const SizedBox(height: 4),
-                        Text('Pantau asupan nutrisi dan aktivitas latihan terpadu.',
-                            style: TextStyle(color: context.textSecondary, fontSize: 12)),
-                        const SizedBox(height: 18),
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: context.card,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: context.border),
-                          ),
-                          child: Row(
-                            children: [
-                              _buildTab('Meal (Nutrisi)', true),
-                              _buildTab('Olahraga', false),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        if (_isMealTab) _buildMealSection() else _buildOlahragaSection(),
+                        _buildTab('Meal (Nutrisi)', true),
+                        _buildTab('Olahraga', false),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 20),
+                  if (_isMealTab)
+                    _buildMealSection(data.makanan, plan)
+                  else
+                    _buildOlahragaSection(data.olahraga, selected, plan),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
-  Widget _buildError() {
+  Widget _offlineNote() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: context.surfaceInner,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: context.border),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.cloud_off_rounded, size: 16, color: context.textMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text('Menampilkan data offline (cache).',
+                style: TextStyle(color: context.textSecondary, fontSize: 11)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError(String message) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -311,11 +304,11 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
           children: [
             Icon(Icons.cloud_off_rounded, size: 44, color: context.textMuted),
             const SizedBox(height: 12),
-            Text(_errorMuat!, textAlign: TextAlign.center,
+            Text(message, textAlign: TextAlign.center,
                 style: TextStyle(color: context.textSecondary, fontSize: 13)),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: _muatData,
+              onPressed: () => ref.invalidate(masterDataProvider),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFF5520),
                 foregroundColor: Colors.white,
@@ -354,14 +347,11 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
     );
   }
 
-  Widget _buildWeeklyPlanCard({required bool meal}) {
-    final plan = _weeklyPlan;
+  Widget _buildWeeklyPlanCard(WeeklyPlan? plan, {required bool meal}) {
     final title = meal ? 'Rencana Menu Minggu Ini' : 'Rencana Latihan Minggu Ini';
     final subtitle = plan == null
         ? 'Belum ada weekly plan yang disetujui PT.'
-        : (meal
-            ? '${plan.mealPlan.length} menu referensi'
-            : '${plan.workoutPlan.length} sesi referensi');
+        : (meal ? '${plan.mealPlan.length} menu referensi' : '${plan.workoutPlan.length} sesi referensi');
 
     return Container(
       width: double.infinity,
@@ -394,20 +384,20 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
     );
   }
 
-  Widget _buildMealSection() {
-    final total = _totalKaloriMasuk().round();
+  Widget _buildMealSection(List<MasterMakanan> makananList, WeeklyPlan? plan) {
+    final total = _totalKaloriMasuk(makananList).round();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildWeeklyPlanCard(meal: true),
+        _buildWeeklyPlanCard(plan, meal: true),
         const SizedBox(height: 22),
         Text('Preset Makanan',
             style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        if (_makananList.isEmpty)
+        if (makananList.isEmpty)
           Text('Master makanan kosong.', style: TextStyle(color: context.textSecondary, fontSize: 12))
         else
-          ..._makananList.take(8).map((m) {
+          ...makananList.take(8).map((m) {
             final selected = _selectedMealIds.contains(m.id);
             final gram = _porsi[m.id] ?? 100;
             final kalori = (m.kaloriPer100g * (gram / 100)).round();
@@ -487,10 +477,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
           children: [
             Expanded(
               flex: 3,
-              child: _inputBox(
-                controller: _customMenuController,
-                hint: 'Ketik Menu Anda',
-              ),
+              child: _inputBox(controller: _customMenuController, hint: 'Ketik Menu Anda'),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -581,12 +568,12 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
     );
   }
 
-  Widget _buildOlahragaSection() {
-    final olahraga = _selectedOlahraga;
+  Widget _buildOlahragaSection(
+      List<MasterOlahraga> olahragaList, MasterOlahraga? selected, WeeklyPlan? plan) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildWeeklyPlanCard(meal: false),
+        _buildWeeklyPlanCard(plan, meal: false),
         const SizedBox(height: 22),
         Text('Catat Aktivitas Latihan',
             style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
@@ -600,11 +587,11 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<MasterOlahraga>(
-              value: olahraga,
+              value: selected,
               isExpanded: true,
               dropdownColor: context.card,
               icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFFFF5520)),
-              items: _olahragaList
+              items: olahragaList
                   .map((item) => DropdownMenuItem<MasterOlahraga>(
                         value: item,
                         child: Text(item.nama, style: TextStyle(color: context.textPrimary, fontSize: 13)),
@@ -618,7 +605,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
         ),
         const SizedBox(height: 12),
         _inputBox(controller: _durasiController, hint: 'Durasi Latihan (menit)', keyboardType: TextInputType.number),
-        if (olahraga != null && olahraga.butuhJarak) ...[
+        if (selected != null && selected.butuhJarak) ...[
           const SizedBox(height: 12),
           _inputBox(
             controller: _jarakController,
@@ -631,7 +618,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
           width: double.infinity,
           height: 46,
           child: ElevatedButton(
-            onPressed: _menyimpanAktivitas ? null : _submitActivity,
+            onPressed: _menyimpanAktivitas ? null : () => _submitActivity(selected),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF5520),
               foregroundColor: Colors.white,
@@ -660,7 +647,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
               style: TextStyle(color: context.textSecondary, fontSize: 12))
         else
           ..._submittedActivities.map((act) {
-            final matches = _olahragaList.where((o) => o.id == act.olahragaId);
+            final matches = olahragaList.where((o) => o.id == act.olahragaId);
             final nama = matches.isEmpty ? 'Olahraga' : matches.first.nama;
             return Container(
               margin: const EdgeInsets.only(bottom: 10),

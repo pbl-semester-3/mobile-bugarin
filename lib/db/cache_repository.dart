@@ -1,0 +1,85 @@
+import 'package:drift/drift.dart' show Value;
+
+import '../features/progres/models/master_data.dart';
+import 'local_database.dart';
+
+/// Kontrak cache lokal (drift). Dibuat interface supaya orkestrasi
+/// (kapan tulis/baca cache) bisa di-unit-test dengan fake tanpa SQLite native.
+abstract interface class CacheRepository {
+  Future<void> cacheMasterOlahraga(List<MasterOlahraga> list);
+  Future<List<MasterOlahraga>> getCachedMasterOlahraga();
+
+  Future<void> cacheMasterMakanan(List<MasterMakanan> list);
+  Future<List<MasterMakanan>> getCachedMasterMakanan({String? q});
+}
+
+class DriftCacheRepository implements CacheRepository {
+  final LocalDatabase db;
+
+  DriftCacheRepository(this.db);
+
+  @override
+  Future<void> cacheMasterOlahraga(List<MasterOlahraga> list) async {
+    await db.transaction(() async {
+      await db.delete(db.masterOlahragaCache).go();
+      await db.batch(
+        (batch) => batch.insertAll(
+          db.masterOlahragaCache,
+          list.map((o) => MasterOlahragaCacheCompanion.insert(
+                id: Value(o.id),
+                nama: o.nama,
+                metValue: o.metValue,
+                butuhJarak: o.butuhJarak,
+              )),
+        ),
+      );
+    });
+  }
+
+  @override
+  Future<List<MasterOlahraga>> getCachedMasterOlahraga() async {
+    final rows = await db.select(db.masterOlahragaCache).get();
+    return rows
+        .map((r) => MasterOlahraga(
+              id: r.id,
+              nama: r.nama,
+              metValue: r.metValue,
+              kategori: '',
+              butuhJarak: r.butuhJarak,
+            ))
+        .toList();
+  }
+
+  @override
+  Future<void> cacheMasterMakanan(List<MasterMakanan> list) async {
+    await db.transaction(() async {
+      await db.delete(db.masterMakananCache).go();
+      await db.batch(
+        (batch) => batch.insertAll(
+          db.masterMakananCache,
+          list.map((m) => MasterMakananCacheCompanion.insert(
+                id: Value(m.id),
+                nama: m.nama,
+                kaloriPer100g: m.kaloriPer100g,
+              )),
+        ),
+      );
+    });
+  }
+
+  @override
+  Future<List<MasterMakanan>> getCachedMasterMakanan({String? q}) async {
+    final rows = await db.select(db.masterMakananCache).get();
+    final query = (q ?? '').toLowerCase();
+    return rows
+        .where((r) => query.isEmpty || r.nama.toLowerCase().contains(query))
+        .map((r) => MasterMakanan(
+              id: r.id,
+              nama: r.nama,
+              kaloriPer100g: r.kaloriPer100g,
+              kategori: '',
+              sumber: 'seed',
+            ))
+        .toList();
+  }
+}
