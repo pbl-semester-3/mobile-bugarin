@@ -75,6 +75,49 @@ void main() {
       expect(captured!.containsKey('bbAwalKg'), isFalse);
     });
 
+    test('changePassword mengirim passwordSaatIni & passwordBaru', () async {
+      Map<String, dynamic>? captured;
+      final repo = _repo((options) async {
+        expect(options.method, 'PUT');
+        expect(options.path, '/klien/password');
+        captured = Map<String, dynamic>.from(options.data as Map);
+        return jsonResponse({'data': {'message': 'ok'}});
+      });
+
+      await repo.changePassword(passwordSaatIni: 'lama123', passwordBaru: 'baru1234');
+
+      expect(captured!['passwordSaatIni'], 'lama123');
+      expect(captured!['passwordBaru'], 'baru1234');
+    });
+
+    test('changeTheme mengirim tema siang/malam', () async {
+      Map<String, dynamic>? captured;
+      final repo = _repo((options) async {
+        expect(options.method, 'PUT');
+        expect(options.path, '/klien/theme');
+        captured = Map<String, dynamic>.from(options.data as Map);
+        return jsonResponse({'data': {'tema': 'malam'}});
+      });
+
+      await repo.changeTheme('malam');
+
+      expect(captured!['tema'], 'malam');
+    });
+
+    test('addWeightLog mengirim beratBadanKg', () async {
+      Map<String, dynamic>? captured;
+      final repo = _repo((options) async {
+        expect(options.method, 'POST');
+        expect(options.path, '/klien/weight-logs');
+        captured = Map<String, dynamic>.from(options.data as Map);
+        return jsonResponse({'data': {'message': 'ok'}});
+      });
+
+      await repo.addWeightLog(70.5);
+
+      expect(captured!['beratBadanKg'], 70.5);
+    });
+
     test('error 422 dipetakan ke pesan backend', () async {
       final repo = _repo((_) async => jsonResponse(
             {'error': 'Harap masukkan bbAwalKg untuk siklus pertama'},
