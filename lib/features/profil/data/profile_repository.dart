@@ -29,6 +29,16 @@ abstract interface class ProfileRepository {
     required int durasiHari,
     double? bbAwalKg,
   });
+
+  Future<void> changePassword({
+    required String passwordSaatIni,
+    required String passwordBaru,
+  });
+
+  Future<void> changeTheme(String tema); // 'siang' | 'malam'
+
+  /// Insert entry `weight_logs` baru; backend otomatis cek goal tercapai.
+  Future<void> addWeightLog(double beratBadanKg);
 }
 
 class DioProfileRepository implements ProfileRepository {
@@ -86,6 +96,41 @@ class DioProfileRepository implements ProfileRepository {
         'tujuan': tujuan,
         'durasiHari': durasiHari,
         if (bbAwalKg != null) 'bbAwalKg': bbAwalKg,
+      });
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  @override
+  Future<void> changePassword({
+    required String passwordSaatIni,
+    required String passwordBaru,
+  }) async {
+    try {
+      await apiClient.dio.put('/klien/password', data: {
+        'passwordSaatIni': passwordSaatIni,
+        'passwordBaru': passwordBaru,
+      });
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  @override
+  Future<void> changeTheme(String tema) async {
+    try {
+      await apiClient.dio.put('/klien/theme', data: {'tema': tema});
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  @override
+  Future<void> addWeightLog(double beratBadanKg) async {
+    try {
+      await apiClient.dio.post('/klien/weight-logs', data: {
+        'beratBadanKg': beratBadanKg,
       });
     } on DioException catch (e) {
       throw mapDioException(e);
