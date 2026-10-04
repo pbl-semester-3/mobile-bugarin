@@ -5,16 +5,45 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/theme/theme_provider.dart';
+import '../../db/cache_provider.dart';
+import '../../db/cache_repository.dart';
 import '../../providers/auth_provider.dart';
 import '../../shared/widgets/bugarin_header.dart';
+import 'data/dashboard_repository.dart';
 import 'data/dashboard_repository_provider.dart';
 import 'models/dashboard_summary.dart';
 
 part 'dashboard_screen.g.dart';
 
+/// Stale-while-revalidate: tampilkan cache dulu (bila ada), lalu fetch fresh
+/// dan simpan ke cache. Bila fetch gagal tetapi cache ada, tetap pakai cache.
+Stream<DashboardSummary> dashboardSummaryStream({
+  required DashboardRepository repo,
+  required CacheRepository cache,
+}) async* {
+  DashboardSummary? cached;
+  try {
+    cached = await cache.getCachedDashboardSummary();
+  } catch (_) {
+    // Cache gagal dibaca — lanjut ke fetch.
+  }
+  if (cached != null) yield cached;
+
+  try {
+    final fresh = await repo.getSummary();
+    await cache.cacheDashboardSummary(fresh);
+    yield fresh;
+  } catch (e) {
+    if (cached == null) rethrow;
+  }
+}
+
 @riverpod
-Future<DashboardSummary> dashboardSummary(Ref ref) {
-  return ref.watch(dashboardRepositoryProvider).getSummary();
+Stream<DashboardSummary> dashboardSummary(Ref ref) {
+  return dashboardSummaryStream(
+    repo: ref.watch(dashboardRepositoryProvider),
+    cache: ref.watch(cacheRepositoryProvider),
+  );
 }
 
 class DashboardScreen extends ConsumerWidget {

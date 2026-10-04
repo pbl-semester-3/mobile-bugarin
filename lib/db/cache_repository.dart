@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show Value;
 
+import '../features/dashboard/models/dashboard_summary.dart';
 import '../features/progres/models/master_data.dart';
 import '../features/progres/models/weekly_plan.dart';
 import 'local_database.dart';
@@ -17,6 +18,9 @@ abstract interface class CacheRepository {
 
   Future<void> cacheWeeklyPlan(WeeklyPlan plan);
   Future<WeeklyPlan?> getCachedWeeklyPlan();
+
+  Future<void> cacheDashboardSummary(DashboardSummary summary);
+  Future<DashboardSummary?> getCachedDashboardSummary();
 }
 
 class DriftCacheRepository implements CacheRepository {
@@ -112,5 +116,23 @@ class DriftCacheRepository implements CacheRepository {
       'workoutPlan': jsonDecode(row.workoutPlanJson),
       'mealPlan': jsonDecode(row.mealPlanJson),
     });
+  }
+
+  @override
+  Future<void> cacheDashboardSummary(DashboardSummary summary) async {
+    await db.into(db.dashboardSummaryCache).insertOnConflictUpdate(
+          DashboardSummaryCacheCompanion.insert(
+            id: const Value(1),
+            json: jsonEncode(summary.toJson()),
+            cachedAt: DateTime.now(),
+          ),
+        );
+  }
+
+  @override
+  Future<DashboardSummary?> getCachedDashboardSummary() async {
+    final row = await (db.select(db.dashboardSummaryCache)..limit(1)).getSingleOrNull();
+    if (row == null) return null;
+    return DashboardSummary.fromJson(jsonDecode(row.json) as Map<String, dynamic>);
   }
 }
