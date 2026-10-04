@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../providers/auth_provider.dart';
+import 'data/auth_repository.dart';
+
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -43,9 +46,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      // Simulasi proses pendaftaran ke backend
-      await Future.delayed(const Duration(seconds: 1));
-      
+      await ref.read(authStateProvider.notifier).register(
+            nama: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            username: _usernameController.text.trim(),
+            password: _passwordController.text,
+          );
+
       if (!mounted) return;
 
       // Munculkan notifikasi sukses
@@ -59,8 +66,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
               SizedBox(width: 10),
               Expanded(
-                child: Text('Pendaftaran berhasil! Silakan login.', 
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text('Pendaftaran berhasil! Lengkapi profilmu.',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -68,9 +75,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ),
       );
 
-      // Pindah ke halaman login
-      context.go('/login');
-      
+      // Setelah register, akun sudah terautentikasi → guard arahkan ke Onboarding.
+      context.go('/');
+    } on AuthException catch (e) {
+      setState(() => _errorMessage = e.message);
     } catch (e) {
       setState(() => _errorMessage = 'Gagal mendaftar. Silakan coba lagi.');
     } finally {
@@ -78,18 +86,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
-  Future<void> _handleGoogleRegister() async {
-    if (_socialLoadingProvider != null || _isLoading) return;
-    setState(() => _socialLoadingProvider = 'Google');
-
-    try {
-      await Future.delayed(const Duration(milliseconds: 1200));
-      if (mounted) context.go('/onboarding');
-    } catch (e) {
-      setState(() => _errorMessage = 'Gagal mendaftar dengan Google.');
-    } finally {
-      if (mounted) setState(() => _socialLoadingProvider = null);
-    }
+  void _handleGoogleRegister() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        backgroundColor: Color(0xFF1E222B),
+        behavior: SnackBarBehavior.floating,
+        content: Text(
+          'Daftar dengan Google belum tersedia.',
+          style: TextStyle(color: Colors.white),
+        ),
+      ),
+    );
   }
 
   @override

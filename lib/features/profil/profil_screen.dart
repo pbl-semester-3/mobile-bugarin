@@ -1,122 +1,23 @@
-import 'dart:io';
-
-import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:gal/gal.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/theme_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../services/api_error.dart';
 import '../../shared/widgets/bugarin_header.dart';
+import '../auth/data/auth_repository_provider.dart';
+import '../auth/models/klien_profile.dart';
+import '../auth/models/progress_cycle.dart';
+import 'data/profile_repository_provider.dart';
 
-// ===================== KONFIGURASI & KLIEN API =====================
-
-/// SESUAIKAN dengan alamat backend.
-/// Emulator Android -> 10.0.2.2 mengarah ke localhost komputer.
-/// Perangkat fisik -> pakai IP LAN komputer atau domain server.
-final String _kBaseUrl = kIsWeb
-    ? 'http://localhost:3000/api' // Chrome / web
-    : 'http://10.0.2.2:3000/api'; // emulator Android
-
-/// MODE DATA CONTOH.
-/// true  = tidak memanggil backend, memakai data dummy (untuk melihat/menguji tampilan).
-/// false = memanggil backend sungguhan. UBAH KE false SAAT BACKEND SUDAH SIAP.
-const bool _kPakaiMock = true;
-
-/// SESUAIKAN dengan key yang dipakai LoginScreen saat menyimpan JWT.
-const String _kTokenKey = 'auth_token';
-
-final _secureStorageProvider = Provider<FlutterSecureStorage>(
-  (ref) => const FlutterSecureStorage(),
-);
-
-final _dioProvider = Provider<Dio>((ref) {
-  final storage = ref.watch(_secureStorageProvider);
-
-  final dio = Dio(
-    BaseOptions(
-      baseUrl: _kBaseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 20),
-      headers: {'Accept': 'application/json'},
-    ),
-  );
-
-  dio.interceptors.add(
-    InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await storage.read(key: _kTokenKey);
-        if (token != null && token.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
-      },
-    ),
-  );
-
-  return dio;
-});
-
-Map<String, dynamic> _unwrapMap(dynamic body) {
-  if (body is Map<String, dynamic>) {
-    final data = body['data'];
-    if (data is Map<String, dynamic>) return data;
-    return body;
-  }
-  return <String, dynamic>{};
-}
-
-String? _resolveMediaUrl(String? url) {
-  if (url == null || url.isEmpty) return null;
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  final origin = Uri.parse(_kBaseUrl).origin;
-  return url.startsWith('/') ? '$origin$url' : '$origin/$url';
-}
+// ===================== PEMETAAN ERROR =====================
 
 String _pesanError(Object e, {String fallback = 'Terjadi kesalahan. Silakan coba lagi.'}) {
-  if (e is DioException) {
-    final data = e.response?.data;
-    if (data is Map) {
-      final msg = data['message'] ?? data['error'];
-      if (msg is String && msg.isNotEmpty) return msg;
-    }
-    switch (e.type) {
-      case DioExceptionType.connectionError:
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.receiveTimeout:
-      case DioExceptionType.sendTimeout:
-        return 'Tidak dapat terhubung ke server. Periksa koneksi Anda.';
-      default:
-        break;
-    }
-  }
+  if (e is ApiException) return e.message;
   return fallback;
 }
-
-double? _toDouble(dynamic v) => v == null ? null : double.tryParse(v.toString());
-int? _toInt(dynamic v) => v == null ? null : int.tryParse(v.toString());
-
-String _alergiKeString(dynamic v) {
-  if (v == null) return '';
-  if (v is List) return v.join(', ');
-  return v.toString();
-}
-
-String? _normalJenisKelamin(dynamic v) {
-  final s = (v ?? '').toString().toLowerCase().replaceAll(' ', '_').replaceAll('-', '_');
-  if (s == 'laki_laki' || s == 'l' || s == 'male') return 'laki_laki';
-  if (s == 'perempuan' || s == 'p' || s == 'female') return 'perempuan';
-  return null;
-}
-
-const List<String> _bulan = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
-  'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des',
-];
 
 class _ProgressCycle {
   const _ProgressCycle({
@@ -130,14 +31,14 @@ class _ProgressCycle {
     required this.status,
   });
 
-  final String id;
-  final String tujuan; 
+  final int id;
+  final String tujuan;
   final double bbAwal;
   final double bbTujuan;
   final int durasiHari;
-  final double? targetKalori;
+  final int targetKalori;
   final DateTime tanggalMulai;
-  final String status; 
+  final String status;
 
   bool get selesai => status == 'selesai';
 
@@ -159,24 +60,20 @@ class _ProgressCycle {
     return d;
   }
 
-  factory _ProgressCycle.fromJson(Map<String, dynamic> j) {
+  factory _ProgressCycle.fromApi(ProgressCycle c) {
     return _ProgressCycle(
-      id: j['id'].toString(),
-      tujuan: (j['tujuan'] ?? '').toString(),
-      bbAwal: _toDouble(j['bb_awal_kg']) ?? 0,
-      bbTujuan: _toDouble(j['bb_tujuan_kg']) ?? 0,
-      durasiHari: _toInt(j['durasi_hari']) ?? 0,
-      targetKalori: _toDouble(j['target_kalori_per_hari']),
-      tanggalMulai:
-          DateTime.tryParse((j['tanggal_mulai'] ?? '').toString())?.toLocal() ??
-              DateTime.now(),
-      status: (j['status'] ?? '').toString(),
+      id: c.id,
+      tujuan: c.tujuan,
+      bbAwal: c.bbAwalKg,
+      bbTujuan: c.bbTujuanKg,
+      durasiHari: c.durasiHari,
+      targetKalori: c.targetKaloriPerHari,
+      tanggalMulai: DateTime.tryParse(c.tanggalMulai)?.toLocal() ?? DateTime.now(),
+      status: c.status,
     );
   }
 }
 
-/// Respons GET /klien/profile.
-/// Jika nama key dari backend berbeda, cukup ubah di factory ini.
 class _KlienProfile {
   const _KlienProfile({
     required this.nama,
@@ -186,10 +83,7 @@ class _KlienProfile {
     required this.jenisKelamin,
     required this.alergi,
     required this.tinggiBadan,
-    required this.fotoUrl,
-    required this.bbSekarang,
     required this.tema,
-    required this.dibuatPada,
     required this.cycle,
   });
 
@@ -197,144 +91,33 @@ class _KlienProfile {
   final String email;
   final String username;
   final int? usia;
-  final String? jenisKelamin; 
+  final String? jenisKelamin; // 'laki_laki' | 'perempuan'
   final String alergi;
   final double? tinggiBadan;
-  final String? fotoUrl;
-  final double? bbSekarang; 
-  final String? tema; 
-  final DateTime? dibuatPada;
+  final String? tema;
   final _ProgressCycle? cycle;
 
-  String get memberSejak {
-    final d = dibuatPada;
-    if (d == null) return '';
-    return 'Member Sejak ${_bulan[d.month - 1]} ${d.year}';
-  }
+  // Backend belum menyediakan createdAt klien — biarkan kosong.
+  String get memberSejak => '';
 
-  factory _KlienProfile.fromJson(Map<String, dynamic> j) {
-    final rawCycle = j['cycle_aktif'] ?? j['progress_cycle'] ?? j['cycle'];
+  factory _KlienProfile.fromApi(KlienProfile p) {
+    String? jk;
+    if (p.jenisKelamin == 'pria') jk = 'laki_laki';
+    if (p.jenisKelamin == 'wanita') jk = 'perempuan';
+
     return _KlienProfile(
-      nama: (j['nama'] ?? '').toString(),
-      email: (j['email'] ?? '').toString(),
-      username: (j['username'] ?? '').toString(),
-      usia: _toInt(j['usia']),
-      jenisKelamin: _normalJenisKelamin(j['jenis_kelamin']),
-      alergi: _alergiKeString(j['alergi'] ?? j['alergi_makanan']),
-      tinggiBadan: _toDouble(j['tinggi_badan']),
-      fotoUrl: (j['foto_url'] ?? j['foto_profil'])?.toString(),
-      bbSekarang: _toDouble(j['bb_sekarang'] ?? j['bb_sekarang_kg']),
-      tema: (j['theme'] ?? j['tema'])?.toString(),
-      dibuatPada: DateTime.tryParse((j['created_at'] ?? '').toString())?.toLocal(),
-      cycle: rawCycle is Map<String, dynamic> ? _ProgressCycle.fromJson(rawCycle) : null,
+      nama: p.nama,
+      email: p.email ?? '',
+      username: p.username ?? '',
+      usia: p.usia,
+      jenisKelamin: jk,
+      alergi: p.alergiMakanan ?? '',
+      tinggiBadan: p.tinggiBadanCm,
+      tema: p.tema,
+      cycle: p.activeCycle == null ? null : _ProgressCycle.fromApi(p.activeCycle!),
     );
   }
 }
-
-class _ProfilRepository {
-  _ProfilRepository(this._dio);
-
-  final Dio _dio;
-
-  static final Map<String, dynamic> _mock = {
-    'nama': 'Maya Ayuningsih',
-    'email': 'maya@bugarin.id',
-    'username': 'mayaayu',
-    'usia': 26,
-    'jenis_kelamin': 'perempuan',
-    'alergi': 'Laktosa, Kacang Tanah',
-    'tinggi_badan': 168,
-    'foto_url': null,
-    'bb_sekarang': 72.0,
-    'created_at': '2024-01-15T00:00:00Z',
-    'cycle_aktif': {
-      'id': 1,
-      'tujuan': 'turun_bb',
-      'bb_awal_kg': 78.5,
-      'bb_tujuan_kg': 67.0,
-      'durasi_hari': 60,
-      'target_kalori_per_hari': 1980,
-      'tanggal_mulai':
-          DateTime.now().subtract(const Duration(days: 41)).toIso8601String(),
-      'status': 'aktif',
-    },
-  };
-
-  Future<void> _tunda() => Future.delayed(const Duration(milliseconds: 500));
-
-  Future<_KlienProfile> ambilProfil() async {
-    if (_kPakaiMock) {
-      await _tunda();
-      return _KlienProfile.fromJson(Map<String, dynamic>.from(_mock));
-    }
-    final res = await _dio.get('/klien/profile');
-    return _KlienProfile.fromJson(_unwrapMap(res.data));
-  }
-
-  Future<void> perbaruiProfil(Map<String, dynamic> body) async {
-    if (_kPakaiMock) {
-      await _tunda();
-      _mock.addAll(body);
-      return;
-    }
-    await _dio.put('/klien/profile', data: body);
-  }
-
-  Future<void> catatBeratBadan(double beratKg) async {
-    if (_kPakaiMock) {
-      await _tunda();
-      _mock['bb_sekarang'] = beratKg;
-      final cycle = Map<String, dynamic>.from(_mock['cycle_aktif'] as Map);
-      final awal = (cycle['bb_awal_kg'] as num).toDouble();
-      final tujuan = (cycle['bb_tujuan_kg'] as num).toDouble();
-      final tercapai = tujuan < awal ? beratKg <= tujuan : beratKg >= tujuan;
-      if (tercapai) cycle['status'] = 'selesai'; // untuk menguji banner target
-      _mock['cycle_aktif'] = cycle;
-      return;
-    }
-    await _dio.post('/klien/weight-logs', data: {'berat_kg': beratKg});
-  }
-
-  Future<void> ubahSandi({
-    required String passwordLama,
-    required String passwordBaru,
-    required String konfirmasi,
-  }) async {
-    if (_kPakaiMock) {
-      await _tunda();
-      return;
-    }
-    await _dio.put('/klien/password', data: {
-      'password_lama': passwordLama,
-      'password_baru': passwordBaru,
-      'konfirmasi_password': konfirmasi,
-    });
-  }
-
-  Future<void> ubahTema(String tema) async {
-    if (_kPakaiMock) return;
-    await _dio.put('/klien/theme', data: {'theme': tema});
-  }
-
-  Future<String?> unggahFoto(String path) async {
-    if (_kPakaiMock) {
-      await _tunda();
-      _mock['foto_url'] = 'mock:$path';
-      return 'mock:$path';
-    }
-    final namaFile = path.split(RegExp(r'[\\/]')).last;
-    final form = FormData.fromMap({
-      'foto': await MultipartFile.fromFile(path, filename: namaFile),
-    });
-    final res = await _dio.post('/klien/profile/photo', data: form);
-    return _unwrapMap(res.data)['foto_url']?.toString();
-  }
-}
-
-final _profilRepositoryProvider = Provider<_ProfilRepository>(
-  (ref) => _ProfilRepository(ref.watch(_dioProvider)),
-);
-
 
 class _Field extends StatelessWidget {
   const _Field({
@@ -393,8 +176,6 @@ class ProfilScreen extends ConsumerStatefulWidget {
 }
 
 class _ProfilScreenState extends ConsumerState<ProfilScreen> {
-  final ImagePicker _picker = ImagePicker();
-
   final _namaCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
@@ -408,10 +189,6 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   String? _errorMuat;
   String? _jenisKelamin;
 
-  XFile? _fotoLokal;
-  int _fotoVersi = 0;
-
-  bool _unggahFoto = false;
   bool _simpanDiri = false;
   bool _simpanTinggi = false;
   bool _simpanBB = false;
@@ -435,13 +212,18 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   }
 
 
+  Future<_KlienProfile> _ambilProfil() async {
+    final api = await ref.read(authRepositoryProvider).getProfile();
+    return _KlienProfile.fromApi(api);
+  }
+
   Future<void> _muat() async {
     setState(() {
       _memuat = true;
       _errorMuat = null;
     });
     try {
-      final p = await ref.read(_profilRepositoryProvider).ambilProfil();
+      final p = await _ambilProfil();
       if (!mounted) return;
 
       _namaCtrl.text = p.nama;
@@ -468,7 +250,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
 
   Future<void> _segarkan() async {
     try {
-      final p = await ref.read(_profilRepositoryProvider).ambilProfil();
+      final p = await _ambilProfil();
       if (mounted) setState(() => _profil = p);
     } catch (_) {}
   }
@@ -476,9 +258,9 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   void _sinkronTemaDariServer(String? tema) {
     final sedangGelap = ref.read(themeModeProvider) == ThemeMode.dark;
     final notifier = ref.read(themeModeProvider.notifier);
-    if (tema == 'dark' && !sedangGelap) {
+    if (tema == 'malam' && !sedangGelap) {
       notifier.setDark();
-    } else if (tema == 'light' && sedangGelap) {
+    } else if (tema == 'siang' && sedangGelap) {
       notifier.setLight();
     }
   }
@@ -501,129 +283,12 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   }
 
 
-  Future<void> _gantiFoto() async {
-    final sumber = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: context.card,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Ubah Foto Profil',
-                style: TextStyle(color: ctx.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.photo_camera_outlined, color: _oranye),
-                title: Text('Ambil dari kamera', style: TextStyle(color: ctx.textPrimary, fontSize: 14)),
-                onTap: () => Navigator.pop(ctx, ImageSource.camera),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.photo_library_outlined, color: _oranye),
-                title: Text('Pilih dari galeri', style: TextStyle(color: ctx.textPrimary, fontSize: 14)),
-                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (sumber == null) return;
-
-    XFile? hasil;
-    try {
-      hasil = await _picker.pickImage(
-        source: sumber,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-    } on PlatformException {
-      _toast('Akses kamera/galeri ditolak. Aktifkan izin di pengaturan perangkat.', error: true);
-      return;
-    }
-    if (hasil == null) return;
-    final XFile dipilih = hasil;
-
-    final ukuran = await dipilih.length();
-    if (ukuran > 5 * 1024 * 1024) {
-      _toast('Ukuran foto maksimal 5 MB.', error: true);
-      return;
-    }
-
-    if (sumber == ImageSource.camera) {
-      await _simpanKeGaleri(dipilih.path);
-    }
-
-    setState(() {
-      _fotoLokal = dipilih;
-      _unggahFoto = true;
-    });
-
-    try {
-      await ref.read(_profilRepositoryProvider).unggahFoto(dipilih.path);
-      _fotoVersi++;
-      await _segarkan();
-      if (!mounted) return;
-      setState(() => _fotoLokal = null);
-      _toast('Foto profil berhasil diperbarui.');
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _fotoLokal = null);
-      _toast(_pesanError(e, fallback: 'Gagal mengunggah foto.'), error: true);
-    } finally {
-      if (mounted) setState(() => _unggahFoto = false);
-    }
-  }
-
-  Future<void> _simpanKeGaleri(String path) async {
-    if (kIsWeb) return; // penyimpanan ke galeri hanya untuk Android/iOS
-    try {
-      final punyaAkses = await Gal.hasAccess() || await Gal.requestAccess();
-      if (punyaAkses) {
-        await Gal.putImage(path, album: 'Bugarin');
-      }
-    } catch (_) {
-      // Izin ditolak atau gagal menyimpan: abaikan, unggahan tetap dilanjutkan.
-    }
-  }
-
-  ImageProvider _imageDariPath(String path) =>
-      kIsWeb ? NetworkImage(path) : FileImage(File(path));
-
-  ImageProvider? _fotoProvider() {
-    final lokal = _fotoLokal;
-    if (lokal != null) return _imageDariPath(lokal.path);
-    final raw = _profil?.fotoUrl;
-    if (raw != null && raw.startsWith('mock:')) return _imageDariPath(raw.substring(5));
-    final url = _resolveMediaUrl(raw);
-    if (url == null) return null;
-    if (_fotoVersi == 0) return NetworkImage(url);
-    return NetworkImage('$url${url.contains('?') ? '&' : '?'}v=$_fotoVersi');
-  }
-
-
   Future<void> _simpanInformasiDiri() async {
     final nama = _namaCtrl.text.trim();
-    final email = _emailCtrl.text.trim();
-    final username = _usernameCtrl.text.trim();
     final usia = int.tryParse(_usiaCtrl.text.trim());
 
-    if (nama.isEmpty || username.isEmpty) {
-      _toast('Nama dan username wajib diisi.', error: true);
-      return;
-    }
-    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
-      _toast('Format email tidak valid.', error: true);
+    if (nama.isEmpty) {
+      _toast('Nama wajib diisi.', error: true);
       return;
     }
     if (usia == null || usia < 10 || usia > 100) {
@@ -631,16 +296,18 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       return;
     }
 
+    String? jenisKelamin;
+    if (_jenisKelamin == 'laki_laki') jenisKelamin = 'pria';
+    if (_jenisKelamin == 'perempuan') jenisKelamin = 'wanita';
+
     setState(() => _simpanDiri = true);
     try {
-      await ref.read(_profilRepositoryProvider).perbaruiProfil({
-        'nama': nama,
-        'email': email,
-        'username': username,
-        'usia': usia,
-        if (_jenisKelamin != null) 'jenis_kelamin': _jenisKelamin,
-        'alergi': _alergiCtrl.text.trim(),
-      });
+      await ref.read(profileRepositoryProvider).updateProfile(
+            nama: nama,
+            usia: usia,
+            jenisKelamin: jenisKelamin,
+            alergiMakanan: _alergiCtrl.text.trim(),
+          );
       await _segarkan();
       _toast('Informasi diri berhasil diperbarui.');
     } catch (e) {
@@ -659,7 +326,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
 
     setState(() => _simpanTinggi = true);
     try {
-      await ref.read(_profilRepositoryProvider).perbaruiProfil({'tinggi_badan': tinggi});
+      await ref.read(profileRepositoryProvider).updateProfile(tinggiBadanCm: tinggi);
       await _segarkan();
       _toast('Tinggi badan berhasil diperbarui.');
     } catch (e) {
@@ -678,7 +345,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
 
     setState(() => _simpanBB = true);
     try {
-      await ref.read(_profilRepositoryProvider).catatBeratBadan(bb);
+      await ref.read(profileRepositoryProvider).addWeightLog(bb);
       _bbCtrl.clear();
       await _segarkan(); // cycle bisa berubah menjadi 'selesai' bila goal tercapai
       _toast('Berat badan berhasil dicatat: ${bb.toStringAsFixed(1)} kg');
@@ -697,7 +364,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       notifier.setLight();
     }
     try {
-      await ref.read(_profilRepositoryProvider).ubahTema(gelap ? 'dark' : 'light');
+      await ref.read(profileRepositoryProvider).changeTheme(gelap ? 'malam' : 'siang');
     } catch (_) {
       _toast('Tema diterapkan, tetapi belum tersimpan di server.', error: true);
     }
@@ -717,17 +384,8 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   }
 
   Future<void> _mulaiTargetBaru() async {
-    await context.push('/onboarding');
+    await context.push('/onboarding?mode=new-cycle');
     if (mounted) _segarkan();
-  }
-
-  Future<void> _keluarSesi() async {
-    try {
-      if (!_kPakaiMock) await ref.read(_dioProvider).post('/auth/logout');
-    } catch (_) {
-      // Sesi lokal tetap dihapus walau server tidak terjangkau.
-    }
-    await ref.read(_secureStorageProvider).deleteAll();
   }
 
   Future<void> _logout() async {
@@ -765,9 +423,10 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
     );
     if (yakin != true) return;
 
-    await _keluarSesi();
+    // Logout lewat notifier auth (POST /auth/logout + clear token), lalu ke Login.
+    await ref.read(authStateProvider.notifier).logout();
     if (!mounted) return;
-    context.go('/welcome');
+    context.go('/login');
   }
 
   // ---------------------------------------------------------------- BUILD
@@ -929,74 +588,24 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   }
 
   Widget _buildAvatar(_KlienProfile p) {
-    final img = _fotoProvider();
     final inisial = p.nama.trim().isEmpty ? '?' : p.nama.trim()[0].toUpperCase();
 
-    return GestureDetector(
-      onTap: _unggahFoto ? null : _gantiFoto,
-      child: SizedBox(
-        width: 90,
-        height: 90,
-        child: Stack(
-          children: [
-            Container(
-              width: 86,
-              height: 86,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: context.surfaceInner,
-                border: Border.all(color: _oranye, width: 2.2),
-                image: img == null
-                    ? null
-                    : DecorationImage(image: img, fit: BoxFit.cover, onError: (_, __) {}),
-              ),
-              child: img == null
-                  ? Center(
-                      child: Text(
-                        inisial,
-                        style: const TextStyle(
-                          color: _oranye,
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-            if (_unggahFoto)
-              Positioned.fill(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 4, bottom: 4),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Color(0x88000000),
-                    ),
-                    child: const Center(
-                      child: SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.2),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: _oranye,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: context.card, width: 2),
-                ),
-                child: const Icon(Icons.photo_camera_rounded, size: 14, color: Colors.white),
-              ),
-            ),
-          ],
+    return SizedBox(
+      width: 90,
+      height: 90,
+      child: Container(
+        width: 86,
+        height: 86,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: context.surfaceInner,
+          border: Border.all(color: _oranye, width: 2.2),
+        ),
+        child: Center(
+          child: Text(
+            inisial,
+            style: const TextStyle(color: _oranye, fontSize: 32, fontWeight: FontWeight.bold),
+          ),
         ),
       ),
     );
@@ -1071,7 +680,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   }
 
   Widget _buildProgressCard(_KlienProfile p, _ProgressCycle c) {
-    final double sekarang = p.bbSekarang ?? c.bbAwal;
+    final double sekarang = c.bbAwal; // Backend belum sediakan BB terkini (lihat CATATAN.md)
     final double jarak = c.bbTujuan - c.bbAwal;
     // Dihitung bertanda sehingga benar untuk Turun BB maupun Naik BB,
     // lalu di-clamp 0..100% (angka asli tetap tersimpan di backend).
@@ -1171,7 +780,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
 
   /// Target kalori, durasi, dan tujuan: read-only dari progress_cycles aktif.
   Widget _buildInfoSiklus(_ProgressCycle c) {
-    final kalori = c.targetKalori == null ? '-' : '${c.targetKalori!.round()} kcal/hari';
+    final kalori = '${c.targetKalori} kcal/hari';
     final double progresSiklus =
         c.durasiHari > 0 ? (c.hariKe / c.durasiHari).clamp(0.0, 1.0).toDouble() : 0.0;
 
@@ -1549,10 +1158,9 @@ class _UbahSandiSheetState extends ConsumerState<_UbahSandiSheet> {
       _error = null;
     });
     try {
-      await ref.read(_profilRepositoryProvider).ubahSandi(
-            passwordLama: _lamaCtrl.text,
+      await ref.read(profileRepositoryProvider).changePassword(
+            passwordSaatIni: _lamaCtrl.text,
             passwordBaru: _baruCtrl.text,
-            konfirmasi: _konfCtrl.text,
           );
       if (!mounted) return;
       Navigator.pop(context, true);

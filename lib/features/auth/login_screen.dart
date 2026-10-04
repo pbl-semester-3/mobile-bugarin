@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/theme_provider.dart';
+import '../../providers/auth_provider.dart';
+import 'data/auth_repository.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   final bool initialIsLogin;
   const LoginScreen({super.key, this.initialIsLogin = true});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _storage = const FlutterSecureStorage();
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   late bool _isLoginTab;
   
   final _loginIdentifierController = TextEditingController();
@@ -58,31 +59,36 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleSubmit() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null; 
+      _errorMessage = null;
       _hasLoginError = false;
     });
-    
+
     try {
-      await Future.delayed(const Duration(seconds: 1)); // Simulasi proses Backend
-      
+      final notifier = ref.read(authStateProvider.notifier);
+
       if (!_isLoginTab) {
         // --- LOGIKA REGISTER ---
-        if (_registerNameController.text.isEmpty || _registerEmailController.text.isEmpty || _registerPasswordController.text.isEmpty) {
+        if (_registerNameController.text.isEmpty ||
+            _registerEmailController.text.isEmpty ||
+            _registerPasswordController.text.isEmpty) {
           setState(() => _errorMessage = 'Semua kolom pendaftaran wajib diisi.');
           return;
         }
 
-        if (!mounted) return;
-        
-        setState(() {
-          _isLoginTab = true;
-          _registerNameController.clear();
-          _registerUsernameController.clear();
-          _registerEmailController.clear();
-          _registerPasswordController.clear();
-        });
+        await notifier.register(
+          nama: _registerNameController.text.trim(),
+          email: _registerEmailController.text.trim(),
+          username: _registerUsernameController.text.trim(),
+          password: _registerPasswordController.text,
+        );
 
-        ScaffoldMessenger.of(context).showSnackBar(
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) navigator.pop(); // tutup bottom sheet
+        if (mounted) context.go('/');
+
+        messenger.showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFFFF5520),
             behavior: SnackBarBehavior.floating,
@@ -91,34 +97,36 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
                 SizedBox(width: 10),
-                Expanded(child: Text('Pendaftaran berhasil! Silakan login.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                Expanded(child: Text('Pendaftaran berhasil! Lengkapi profilmu.', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
               ],
             ),
           ),
         );
       } else {
         // --- LOGIKA LOGIN ---
-        if (_loginIdentifierController.text.isEmpty || _loginPasswordController.text.isEmpty) {
+        if (_loginIdentifierController.text.isEmpty ||
+            _loginPasswordController.text.isEmpty) {
           setState(() => _hasLoginError = true);
           return;
         }
 
-        // Simulasi validasi salah password (misal kurang dari 6 huruf = salah)
-        if (_loginPasswordController.text.length < 6) {
-          setState(() => _hasLoginError = true);
-          return;
-        }
+        await notifier.login(
+          emailOrUsername: _loginIdentifierController.text.trim(),
+          password: _loginPasswordController.text,
+        );
 
-        // Login berhasil
-        String userName = _loginIdentifierController.text.contains('@') 
-            ? _loginIdentifierController.text.split('@').first 
-            : _loginIdentifierController.text;
-            
-        await _storage.write(key: 'user_name', value: userName);
-        await _storage.write(key: 'auth_token', value: 'token_email_bugarin_dummy');
-        
         if (!mounted) return;
-        context.go('/onboarding');
+        final navigator = Navigator.of(context);
+        if (navigator.canPop()) navigator.pop(); // tutup bottom sheet
+        if (mounted) context.go('/');
+      }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      if (_isLoginTab) {
+        // Pesan salah kredensial tampil di bawah kolom (UI teman).
+        setState(() => _hasLoginError = true);
+      } else {
+        setState(() => _errorMessage = e.message);
       }
     } catch (e) {
       if (mounted) {
@@ -266,25 +274,21 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _handleSocialAuth(String provider) async {
-    if (_socialLoadingProvider != null || _isLoading) return;
-    setState(() => _socialLoadingProvider = provider);
-    
-    try {
-      await Future.delayed(const Duration(milliseconds: 1200));
-      final socialUserName = provider == 'Google' ? 'Alex Rivera' : 'Member';
-      await _storage.write(key: 'user_name', value: socialUserName);
-      await _storage.write(key: 'auth_token', value: 'oauth_token_${provider.toLowerCase()}_active');
-      
-      if (!mounted) return;
-      context.go('/onboarding');
-    } catch (err) {
-      if (mounted) {
-        setState(() => _errorMessage = 'Gagal masuk dengan $provider');
-      }
-    } finally {
-      if (mounted) setState(() => _socialLoadingProvider = null);
-    }
+  // Social auth belum punya backend OAuth — tampilkan pesan jelas, jangan
+  // menulis token dummy (menjaga sesi auth tetap bersih).
+  void _handleSocialAuth(String provider) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: context.surfaceInner,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Text(
+          'Masuk dengan $provider belum tersedia.',
+          style: TextStyle(color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
   }
 
   @override

@@ -1,41 +1,42 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../features/auth/login_screen.dart';
 import '../features/auth/register_screen.dart';
 import '../features/onboarding/onboarding_screen.dart';
+import '../features/splash/splash_screen.dart';
 import '../features/welcome/welcome_screen.dart';
 import '../providers/auth_provider.dart';
+import '../providers/has_seen_welcome_provider.dart';
 import '../shell/main_shell.dart';
+import 'auth_redirect.dart';
 
 part 'app_router.g.dart';
 
 @riverpod
 GoRouter appRouter(Ref ref) {
-  final authState = ref.watch(authStateProvider);
+  // Re-evaluasi redirect saat status auth berubah, tanpa membangun ulang
+  // instance GoRouter (menjaga stack navigasi).
+  final refresh = ValueNotifier<int>(0);
+  ref.listen(authStateProvider, (_, __) => refresh.value++);
+  ref.onDispose(refresh.dispose);
 
   return GoRouter(
-    initialLocation: '/welcome',
+    initialLocation: '/splash',
+    refreshListenable: refresh,
     redirect: (context, state) {
-      final isLoggedIn = authState is Authenticated;
-
-      final isGoingToAuthOrWelcome = state.matchedLocation == '/welcome' ||
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
-
-      final isGoingToOnboarding = state.matchedLocation == '/onboarding';
-      final isGoingToDashboard = state.matchedLocation == '/';
-
-      if (isGoingToOnboarding || isGoingToDashboard) {
-        return null;
-      }
-      if (!isLoggedIn && !isGoingToAuthOrWelcome) {
-        return '/welcome';
-      }
-
-      return null;
+      return resolveAuthRedirect(
+        authState: ref.read(authStateProvider),
+        hasSeenWelcome: ref.read(hasSeenWelcomeProvider),
+        location: state.matchedLocation,
+      );
     },
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/welcome',
         builder: (context, state) => const WelcomeScreen(),
@@ -50,7 +51,9 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        builder: (context, state) => OnboardingScreen(
+          mode: state.uri.queryParameters['mode'] ?? 'first-time',
+        ),
       ),
       GoRoute(
         path: '/',
