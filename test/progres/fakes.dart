@@ -1,6 +1,8 @@
 import 'package:bugarin_mobile/db/cache_repository.dart';
 import 'package:bugarin_mobile/features/progres/data/master_repository.dart';
+import 'package:bugarin_mobile/features/progres/data/progres_repository.dart';
 import 'package:bugarin_mobile/features/progres/models/master_data.dart';
+import 'package:bugarin_mobile/features/progres/models/weekly_plan.dart';
 import 'package:bugarin_mobile/services/api_error.dart';
 
 class FakeMasterRepository implements MasterRepository {
@@ -49,4 +51,43 @@ class FakeCacheRepository implements CacheRepository {
     final query = q.toLowerCase();
     return cachedMakanan.where((m) => m.nama.toLowerCase().contains(query)).toList();
   }
+
+  WeeklyPlan? cachedWeeklyPlan;
+  bool weeklyPlanWritten = false;
+
+  @override
+  Future<void> cacheWeeklyPlan(WeeklyPlan plan) async {
+    cachedWeeklyPlan = plan;
+    weeklyPlanWritten = true;
+  }
+
+  @override
+  Future<WeeklyPlan?> getCachedWeeklyPlan() async => cachedWeeklyPlan;
+}
+
+class FakeProgresRepository implements ProgresRepository {
+  WeeklyPlan? currentPlan;
+  ApiException? error;
+
+  @override
+  Future<WeeklyPlan?> getCurrentWeeklyPlan() async {
+    if (error != null) throw error!;
+    return currentPlan;
+  }
+
+  @override
+  Future<CreatedActivityLog> createActivityLog({
+    required int olahragaId,
+    required int durasiMenit,
+    double? jarakMeter,
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<CreatedMealLog> createMealLog({
+    int? makananId,
+    String? namaMakanan,
+    required double porsiGram,
+  }) =>
+      throw UnimplementedError();
 }
