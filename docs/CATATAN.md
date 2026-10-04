@@ -153,3 +153,28 @@ Android emulator: `--dart-define=API_URL=http://10.0.2.2:4000`.
 
 Branch `auth` **belum di-merge** ke `dev` (menunggu keputusan aktivasi lanjutan).
 Folder `windows/` & `web/` (hanya untuk testing lokal) sengaja tidak di-commit.
+
+---
+
+## 11. Permintaan ke Backend (ditemukan saat Step 2)
+
+Gap yang membuat sebagian fitur Profil/Dashboard belum bisa sepenuhnya nyata:
+
+1. **Berat badan terkini (bb sekarang)** — tidak ada endpoint/field untuk mengambil
+   `weight_logs` terakhir klien. `GET /klien/profile` hanya mengembalikan `activeCycle`
+   (`bbAwalKg`, `bbTujuanKg`), bukan BB terkini. Dibutuhkan untuk progress bar Profil
+   (`bbAwal → bbSekarang → bbTujuan`). Usulan: tambah field `bbSekarangKg` di
+   `GET /klien/profile`, atau endpoint `GET /klien/weight-logs`.
+2. **Kalori masuk hari ini** — `GET /klien/dashboard-summary` tidak mengembalikan kalori
+   yang dikonsumsi hari ini, padahal UI Dashboard menampilkan progres `consumed/target`.
+   Usulan: tambah `kaloriMasukHariIni` di `dashboard-summary`.
+3. **Foto profil** — tidak ada endpoint/kolom untuk upload/ambil foto profil klien.
+   Sementara fitur ganti foto dinonaktifkan di mobile (avatar tampil inisial).
+   Usulan: endpoint `POST /klien/profile/photo` (multipart) + kolom `foto_url` + kembalikan
+   `fotoUrl` di `GET /klien/profile`.
+4. **Update email/username** — `PUT /klien/profile` hanya menerima `nama`, `usia`,
+   `jenisKelamin`, `alergiMakanan`, `tinggiBadanCm`. Tidak ada endpoint untuk mengubah
+   `email`/`username` (tabel `users`). Sementara field email/username di Profil tidak
+   bisa disimpan.
+5. **`createdAt` klien** — tidak dipakai mobile saat ini (`memberSince` dikosongkan);
+   opsional untuk tampilan "Member Sejak".
