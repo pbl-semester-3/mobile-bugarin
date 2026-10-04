@@ -18,6 +18,13 @@ class WorkoutPlanItem {
         jenis: json['jenis'] as String? ?? '',
         lokasi: json['lokasi'] as String? ?? '',
       );
+
+  Map<String, dynamic> toJson() => {
+        'hari': hari,
+        'jam': jam,
+        'jenis': jenis,
+        'lokasi': lokasi,
+      };
 }
 
 /// Item meal plan dari `weekly_plans.meal_plan`.
@@ -37,6 +44,12 @@ class MealPlanItem {
         menu: json['menu'] as String? ?? '',
         estimasiKalori: (json['estimasiKalori'] as num?)?.toInt() ?? 0,
       );
+
+  Map<String, dynamic> toJson() => {
+        'waktu': waktu,
+        'menu': menu,
+        'estimasiKalori': estimasiKalori,
+      };
 }
 
 /// `GET /klien/weekly-plan/current` → data bisa `null` bila belum ada plan disetujui.

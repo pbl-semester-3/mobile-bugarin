@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart' show Value;
 
 import '../features/progres/models/master_data.dart';
+import '../features/progres/models/weekly_plan.dart';
 import 'local_database.dart';
 
 /// Kontrak cache lokal (drift). Dibuat interface supaya orkestrasi
@@ -11,6 +14,9 @@ abstract interface class CacheRepository {
 
   Future<void> cacheMasterMakanan(List<MasterMakanan> list);
   Future<List<MasterMakanan>> getCachedMasterMakanan({String? q});
+
+  Future<void> cacheWeeklyPlan(WeeklyPlan plan);
+  Future<WeeklyPlan?> getCachedWeeklyPlan();
 }
 
 class DriftCacheRepository implements CacheRepository {
@@ -81,5 +87,30 @@ class DriftCacheRepository implements CacheRepository {
               sumber: 'seed',
             ))
         .toList();
+  }
+
+  @override
+  Future<void> cacheWeeklyPlan(WeeklyPlan plan) async {
+    await db.into(db.weeklyPlanCache).insertOnConflictUpdate(
+          WeeklyPlanCacheCompanion.insert(
+            id: Value(plan.id),
+            workoutPlanJson: jsonEncode(plan.workoutPlan.map((e) => e.toJson()).toList()),
+            mealPlanJson: jsonEncode(plan.mealPlan.map((e) => e.toJson()).toList()),
+            cachedAt: DateTime.now(),
+          ),
+        );
+  }
+
+  @override
+  Future<WeeklyPlan?> getCachedWeeklyPlan() async {
+    final row = await (db.select(db.weeklyPlanCache)..limit(1)).getSingleOrNull();
+    if (row == null) return null;
+    return WeeklyPlan.fromJson({
+      'id': row.id,
+      'mingguMulai': '',
+      'status': '',
+      'workoutPlan': jsonDecode(row.workoutPlanJson),
+      'mealPlan': jsonDecode(row.mealPlanJson),
+    });
   }
 }

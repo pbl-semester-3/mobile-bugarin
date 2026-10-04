@@ -6,6 +6,7 @@ import '../models/master_data.dart';
 import '../models/weekly_plan.dart';
 import 'master_repository.dart';
 import 'master_repository_provider.dart';
+import 'progres_repository.dart';
 import 'progres_repository_provider.dart';
 
 part 'progres_providers.g.dart';
@@ -52,8 +53,25 @@ Future<MasterData> masterData(Ref ref) {
   );
 }
 
-/// Weekly plan minggu berjalan (cache ditambahkan di langkah berikutnya).
+/// Orkestrasi weekly plan: fetch API lalu simpan ke cache; bila gagal,
+/// fallback ke cache (bisa `null` bila belum pernah ter-cache).
+Future<WeeklyPlan?> loadWeeklyPlan({
+  required ProgresRepository repo,
+  required CacheRepository cache,
+}) async {
+  try {
+    final plan = await repo.getCurrentWeeklyPlan();
+    if (plan != null) await cache.cacheWeeklyPlan(plan);
+    return plan;
+  } catch (_) {
+    return cache.getCachedWeeklyPlan();
+  }
+}
+
 @riverpod
 Future<WeeklyPlan?> weeklyPlan(Ref ref) {
-  return ref.watch(progresRepositoryProvider).getCurrentWeeklyPlan();
+  return loadWeeklyPlan(
+    repo: ref.watch(progresRepositoryProvider),
+    cache: ref.watch(cacheRepositoryProvider),
+  );
 }
