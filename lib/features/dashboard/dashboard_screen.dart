@@ -9,9 +9,6 @@ import '../../shared/widgets/bugarin_header.dart';
 
 part 'dashboard_screen.g.dart';
 
-// ============================================================================
-// 1. DATA MODEL & PROVIDER
-// ============================================================================
 class DashboardSummary {
   final String userName;
   final int cycleDay;
@@ -43,9 +40,6 @@ Future<DashboardSummary> dashboardSummary(Ref ref) async {
   );
 }
 
-// ============================================================================
-// 2. MAIN SCREEN WIDGET
-// ============================================================================
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
