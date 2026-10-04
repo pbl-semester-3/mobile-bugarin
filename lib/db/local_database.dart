@@ -35,12 +35,34 @@ class WeeklyPlanCache extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [MasterOlahragaCache, MasterMakananCache, WeeklyPlanCache])
+/// Single-row cache untuk dashboard summary (stale-while-revalidate).
+class DashboardSummaryCache extends Table {
+  IntColumn get id => integer()(); // selalu 1
+  TextColumn get json => text()();
+  DateTimeColumn get cachedAt => dateTime().named('cached_at')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(
+  tables: [MasterOlahragaCache, MasterMakananCache, WeeklyPlanCache, DashboardSummaryCache],
+)
 class LocalDatabase extends _$LocalDatabase {
   LocalDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(dashboardSummaryCache);
+          }
+        },
+      );
 }
 
 LazyDatabase _openConnection() {

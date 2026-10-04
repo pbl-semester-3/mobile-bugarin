@@ -20,6 +20,13 @@ class WorkoutPlanItem {
       lokasi: json['lokasi'] as String? ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'hari': hari,
+        'jam': jam,
+        'jenis': jenis,
+        'lokasi': lokasi,
+      };
 }
 
 /// PT aktif klien (`pt` pada dashboard-summary).
@@ -37,6 +44,12 @@ class PtSummary {
       spesialisasi: json['spesialisasi'] as String?,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'nama': nama,
+        'spesialisasi': spesialisasi,
+      };
 }
 
 /// Respons `GET /klien/dashboard-summary`.
@@ -75,4 +88,13 @@ class DashboardSummary {
       unreadFeedbackCount: (json['unreadFeedbackCount'] as num?)?.toInt() ?? 0,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'pt': pt?.toJson(),
+        'targetKaloriHariIni': targetKaloriHariIni,
+        'streak': streak,
+        'jadwalMingguan': jadwalMingguan.map((e) => e.toJson()).toList(),
+        'isReminderActive': isReminderActive,
+        'unreadFeedbackCount': unreadFeedbackCount,
+      };
 }
