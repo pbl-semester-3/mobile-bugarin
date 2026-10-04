@@ -1,98 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../core/theme/theme_provider.dart';
+import '../../services/api_error.dart';
 import '../../shared/widgets/bugarin_header.dart';
+import '../dashboard/dashboard_screen.dart' show dashboardSummaryProvider;
+import 'data/feedback_providers.dart';
+import 'models/feedback_item.dart';
 
-part 'feedback_screen.g.dart';
+const Color _accent = Color(0xFFFF5520);
 
-// ============================================================================
-// 1. DATA MODEL & ENUMERATION (Backend-Ready)
-// ============================================================================
-enum SenderType { ai, coach }
-enum ReplyStatus { none, replied, waiting }
-
-class FeedbackModel {
-  final String id;
-  final SenderType senderType;
-  final String senderName;
-  final String senderRole;
-  final String time;
-  final String content;
-  
-  // Spesifik untuk AI
-  final String? caloryStat;
-  final String? sleepStat;
-  
-  // Spesifik untuk Coach
-  final String? coachTag;
-  final ReplyStatus replyStatus;
-  final String? userReply;
-  final String? replyTime;
-
-  FeedbackModel({
-    required this.id,
-    required this.senderType,
-    required this.senderName,
-    required this.senderRole,
-    required this.time,
-    required this.content,
-    this.caloryStat,
-    this.sleepStat,
-    this.coachTag,
-    this.replyStatus = ReplyStatus.none,
-    this.userReply,
-    this.replyTime,
-  });
-}
-
-// ============================================================================
-// 2. PROVIDER (Simulasi Fetch Data dari API)
-// ============================================================================
-@riverpod
-Future<List<FeedbackModel>> feedbackList(Ref ref) async {
-  // TODO: Ganti dengan request HTTP (dio/http) ke endpoint backend Anda
-  // await Future.delayed(const Duration(milliseconds: 500)); // Simulasi loading
-
-  return [
-    FeedbackModel(
-      id: '1',
-      senderType: SenderType.ai,
-      senderName: 'BUGARIN AI',
-      senderRole: 'Evaluasi Siklus',
-      time: 'Hari ini, 08:30',
-      caloryStat: 'Defisit Kalori: -520 kcal',
-      sleepStat: 'Kualitas Istirahat: 88%',
-      content: 'Analisis asupan nutrisi 3 hari terakhir menunjukkan konsistensi protein yang sangat baik (rata-rata 115g). Disarankan menambah hidrasi +500ml sebelum sesi intensif besok untuk menjaga regenerasi otot.',
-    ),
-    FeedbackModel(
-      id: '2',
-      senderType: SenderType.coach,
-      senderName: 'Coach Sarah\nNayarra',
-      senderRole: 'Coach',
-      time: 'Kemarin, 19:15',
-      coachTag: 'Form Check • Romanian Deadlift',
-      replyStatus: ReplyStatus.replied,
-      content: 'Form deadlift kamu di set ke-3 terlihat jauh lebih stabil di bagian punggung bawah. Pastikan tetap tahan napas di diafragma sebelum mengangkat beban. Pertahankan tempo ini!',
-      userReply: '"Terima kasih coach, saya akan perbaiki postur dan fokus pada brace core."',
-      replyTime: 'Dibalas 19:40',
-    ),
-    FeedbackModel(
-      id: '3',
-      senderType: SenderType.coach,
-      senderName: 'Coach Sarah\nNayarra',
-      senderRole: 'Coach',
-      time: 'Baru saja • 10m lalu',
-      replyStatus: ReplyStatus.waiting,
-      content: 'Halo User! Berdasarkan catatan peregangan panggul tadi pagi, apakah ada rasa nyeri berlebih di area hamstring kanan? Jika ada, kita sesuaikan intensitas gerakan leg curl besok.',
-    ),
-  ];
-}
-
-// ============================================================================
-// 3. MAIN SCREEN WIDGET
-// ============================================================================
 class FeedbackScreen extends ConsumerStatefulWidget {
   const FeedbackScreen({super.key});
 
@@ -101,18 +18,81 @@ class FeedbackScreen extends ConsumerStatefulWidget {
 }
 
 class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
-  // 0: Semua, 1: AI Insight, 2: Coach
-  int _selectedFilter = 0; 
-  final TextEditingController _replyController = TextEditingController();
+  int _selectedFilter = 0; // 0 Semua, 1 AI, 2 Coach
+  bool _sudahTandaiBaca = false;
+  int? _sendingId;
+  final Map<int, TextEditingController> _replyControllers = {};
 
   @override
   void dispose() {
-    _replyController.dispose();
+    for (final c in _replyControllers.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  TextEditingController _replyController(int id) =>
+      _replyControllers.putIfAbsent(id, () => TextEditingController());
+
+  void _toast(String pesan, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: error ? const Color(0xFFE53935) : null,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text(pesan),
+        ),
+      );
+  }
+
+  Future<void> _tandaiBaca(List<FeedbackItem> unread) async {
+    if (_sudahTandaiBaca) return;
+    _sudahTandaiBaca = true;
+    try {
+      final repo = ref.read(feedbackRepositoryProvider);
+      for (final f in unread) {
+        await repo.markRead(f.id);
+      }
+      ref.invalidate(dashboardSummaryProvider); // badge unread di bottom nav
+    } catch (_) {
+      // Diamkan; badge akan tersinkron saat dashboard di-refresh.
+    }
+  }
+
+  Future<void> _kirimBalasan(FeedbackItem item) async {
+    final controller = _replyController(item.id);
+    final teks = controller.text.trim();
+    if (teks.isEmpty) {
+      _toast('Balasan tidak boleh kosong.', error: true);
+      return;
+    }
+    setState(() => _sendingId = item.id);
+    try {
+      await ref.read(feedbackRepositoryProvider).replyFeedback(item.id, teks);
+      controller.clear();
+      ref.invalidate(feedbackListProvider);
+      _toast('Balasan terkirim.');
+    } on ApiException catch (e) {
+      _toast(e.message, error: true);
+    } catch (_) {
+      _toast('Gagal mengirim balasan.', error: true);
+    } finally {
+      if (mounted) setState(() => _sendingId = null);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(feedbackListProvider, (_, next) {
+      next.whenData((list) {
+        final unread = list.where((f) => !f.dibaca).toList();
+        if (unread.isNotEmpty) _tandaiBaca(unread);
+      });
+    });
+
     final feedbackAsync = ref.watch(feedbackListProvider);
 
     return Scaffold(
@@ -126,77 +106,58 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
               child: const BugarinHeader(subtitle: 'Feedback'),
             ),
             const SizedBox(height: 24),
-            
-            // TITLE AREA
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Evaluasi & Saran',
-                    style: TextStyle(
-                      color: context.textPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
+                  Text('Evaluasi & Saran',
+                      style: TextStyle(
+                          color: context.textPrimary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: -0.5)),
                   const SizedBox(height: 4),
-                  Text(
-                    'Umpan balik personalisasi AI & arahan Coach',
-                    style: TextStyle(
-                      color: context.textSecondary,
-                      fontSize: 13,
-                    ),
-                  ),
+                  Text('Umpan balik personalisasi AI & arahan Coach',
+                      style: TextStyle(color: context.textSecondary, fontSize: 13)),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-
-            // FILTER CHIPS
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  _buildFilterChip(0, 'Semua (5)'),
-                  const SizedBox(width: 10),
-                  _buildFilterChip(1, 'AI Insight (2)'),
-                  const SizedBox(width: 10),
-                  _buildFilterChip(2, 'Coach Sarah (3)'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // LIST FEEDBACK (Menggunakan Riverpod AsyncValue)
             Expanded(
               child: feedbackAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFFFF5520))),
-                error: (err, _) => Center(child: Text('Gagal memuat: $err', style: const TextStyle(color: Colors.red))),
+                loading: () => const Center(child: CircularProgressIndicator(color: _accent)),
+                error: (err, _) => _buildError(),
                 data: (feedbacks) {
-                  // Logika Filter
-                  final filteredList = feedbacks.where((f) {
-                    if (_selectedFilter == 1) return f.senderType == SenderType.ai;
-                    if (_selectedFilter == 2) return f.senderType == SenderType.coach;
+                  final filtered = feedbacks.where((f) {
+                    if (_selectedFilter == 1) return f.isAi;
+                    if (_selectedFilter == 2) return f.isPt;
                     return true;
                   }).toList();
 
-                  return ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
-                    physics: const BouncingScrollPhysics(),
-                    itemCount: filteredList.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: 16),
-                    itemBuilder: (context, index) {
-                      final item = filteredList[index];
-                      if (item.senderType == SenderType.ai) {
-                        return _buildAICard(item);
-                      } else {
-                        return _buildCoachCard(item);
-                      }
-                    },
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildFilters(feedbacks),
+                      const SizedBox(height: 20),
+                      Expanded(
+                        child: filtered.isEmpty
+                            ? Center(
+                                child: Text('Belum ada feedback.',
+                                    style: TextStyle(color: context.textSecondary, fontSize: 13)),
+                              )
+                            : ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(24, 0, 24, 100),
+                                physics: const BouncingScrollPhysics(),
+                                itemCount: filtered.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                                itemBuilder: (context, index) {
+                                  final item = filtered[index];
+                                  return item.isAi ? _buildAiCard(item) : _buildCoachCard(item);
+                                },
+                              ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -207,37 +168,82 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     );
   }
 
-  // ============================================================================
-  // 4. WIDGET BUILDERS
-  // ============================================================================
-  
-  Widget _buildFilterChip(int index, String label) {
-    final isSelected = _selectedFilter == index;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedFilter = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFF5520) : context.surfaceInner,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? const Color(0xFFFF5520) : context.border,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : context.textSecondary,
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-          ),
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.cloud_off_rounded, size: 44, color: context.textMuted),
+            const SizedBox(height: 12),
+            Text('Gagal memuat feedback.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: context.textSecondary, fontSize: 13)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref.invalidate(feedbackListProvider),
+              style: ElevatedButton.styleFrom(backgroundColor: _accent, foregroundColor: Colors.white),
+              child: const Text('Coba Lagi'),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildAICard(FeedbackModel item) {
+  Widget _buildFilters(List<FeedbackItem> feedbacks) {
+    final aiCount = feedbacks.where((f) => f.isAi).length;
+    final ptCount = feedbacks.where((f) => f.isPt).length;
+    String? coachName;
+    for (final f in feedbacks) {
+      if (f.isPt && f.pt != null && f.pt!.nama.isNotEmpty) {
+        coachName = f.pt!.nama;
+        break;
+      }
+    }
+
+    final labels = [
+      'Semua (${feedbacks.length})',
+      'AI Insight ($aiCount)',
+      coachName == null ? 'Coach ($ptCount)' : 'Coach $coachName ($ptCount)',
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: List.generate(labels.length, (i) {
+          final isSelected = _selectedFilter == i;
+          return Padding(
+            padding: EdgeInsets.only(right: i == labels.length - 1 ? 0 : 10),
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedFilter = i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? _accent : context.surfaceInner,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: isSelected ? _accent : context.border),
+                ),
+                child: Text(
+                  labels[i],
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : context.textSecondary,
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildAiCard(FeedbackItem item) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -255,64 +261,34 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF5520),
-                      shape: BoxShape.circle,
-                    ),
+                    decoration: const BoxDecoration(color: _accent, shape: BoxShape.circle),
                     child: const Icon(Icons.auto_awesome, color: Colors.white, size: 16),
                   ),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.senderName, style: TextStyle(color: const Color(0xFFFF5520), fontWeight: FontWeight.bold, fontSize: 13)),
-                      Text(item.senderRole, style: TextStyle(color: context.textSecondary, fontSize: 11)),
+                      const Text('BUGARIN AI',
+                          style: TextStyle(color: _accent, fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text('Evaluasi Mingguan',
+                          style: TextStyle(color: context.textSecondary, fontSize: 11)),
                     ],
                   ),
                 ],
               ),
-              Text(item.time, style: TextStyle(color: context.textSecondary, fontSize: 11)),
+              Text(_formatWaktu(item.createdAt),
+                  style: TextStyle(color: context.textSecondary, fontSize: 11)),
             ],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildStatChip(Icons.local_fire_department, item.caloryStat ?? '', isRed: true),
-              const SizedBox(width: 8),
-              _buildStatChip(Icons.dark_mode_outlined, item.sleepStat ?? '', isRed: false),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            item.content,
-            style: TextStyle(color: context.textPrimary, fontSize: 14, height: 1.5),
-          ),
+          Text(item.pesan, style: TextStyle(color: context.textPrimary, fontSize: 14, height: 1.5)),
         ],
       ),
     );
   }
 
-  Widget _buildStatChip(IconData icon, String label, {required bool isRed}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: isRed ? const Color(0xFF2A1515) : context.surfaceInner,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 12, color: isRed ? const Color(0xFFFF4444) : context.textSecondary),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(color: isRed ? const Color(0xFFFF4444) : context.textSecondary, fontSize: 11, fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCoachCard(FeedbackModel item) {
+  Widget _buildCoachCard(FeedbackItem item) {
+    final nama = item.pt?.nama ?? 'Coach';
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -334,10 +310,13 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                     height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFF5520), width: 1.5),
-                      image: const DecorationImage(
-                        image: NetworkImage('https://images.unsplash.com/photo-1594381898411-846e7d193883?w=200'),
-                        fit: BoxFit.cover,
+                      color: context.surfaceInner,
+                      border: Border.all(color: _accent, width: 1.5),
+                    ),
+                    child: Center(
+                      child: Text(
+                        nama.trim().isEmpty ? '?' : nama.trim()[0].toUpperCase(),
+                        style: const TextStyle(color: _accent, fontWeight: FontWeight.bold, fontSize: 18),
                       ),
                     ),
                   ),
@@ -345,42 +324,22 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.senderName, style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.bold, fontSize: 14, height: 1.2)),
+                      Text(nama,
+                          style: TextStyle(
+                              color: context.textPrimary, fontWeight: FontWeight.bold, fontSize: 14, height: 1.2)),
+                      Text('Coach', style: TextStyle(color: context.textSecondary, fontSize: 11)),
                     ],
                   ),
                 ],
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(item.time, style: TextStyle(color: context.textSecondary, fontSize: 11)),
-                  if (item.replyStatus == ReplyStatus.waiting) ...[
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: const Color(0xFFFF5520), borderRadius: BorderRadius.circular(12)),
-                      child: const Text('Menunggu\nBalasan', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
-                    ),
-                  ]
-                ],
-              ),
+              Text(_formatWaktu(item.createdAt),
+                  style: TextStyle(color: context.textSecondary, fontSize: 11)),
             ],
           ),
-          
-          if (item.coachTag != null) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(color: const Color(0xFFFF5520), borderRadius: BorderRadius.circular(12)),
-              child: Text(item.coachTag!, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-            ),
-          ],
-          
           const SizedBox(height: 14),
-          Text(item.content, style: TextStyle(color: context.textPrimary, fontSize: 14, height: 1.5)),
-          
-          // Logika Reply Area
-          if (item.replyStatus == ReplyStatus.replied && item.userReply != null) ...[
+          Text(item.pesan, style: TextStyle(color: context.textPrimary, fontSize: 14, height: 1.5)),
+
+          if (item.sudahDibalas) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(14),
@@ -388,30 +347,28 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Balasan Anda', style: TextStyle(color: context.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
-                      Text(item.replyTime ?? '', style: TextStyle(color: context.textSecondary, fontSize: 11)),
-                    ],
-                  ),
+                  Text('Balasan Anda',
+                      style: TextStyle(color: context.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text(item.userReply!, style: TextStyle(color: context.textPrimary, fontSize: 13, fontStyle: FontStyle.italic)),
+                  Text(item.balasanKlien!,
+                      style: TextStyle(color: context.textPrimary, fontSize: 13, fontStyle: FontStyle.italic)),
                 ],
               ),
             ),
-          ],
-
-          if (item.replyStatus == ReplyStatus.waiting) ...[
+          ] else ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(color: context.bg, borderRadius: BorderRadius.circular(20), border: Border.all(color: context.border)),
+              decoration: BoxDecoration(
+                color: context.bg,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: context.border),
+              ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
-                      controller: _replyController,
+                      controller: _replyController(item.id),
                       style: TextStyle(color: context.textPrimary, fontSize: 13),
                       decoration: InputDecoration(
                         hintText: 'Ketik balasan Anda...',
@@ -422,17 +379,18 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                     ),
                   ),
                   ElevatedButton(
-                    onPressed: () {
-                      // TODO: Implementasi hit API POST Reply
-                    },
+                    onPressed: _sendingId == item.id ? null : () => _kirimBalasan(item),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF5520),
+                      backgroundColor: _accent,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       elevation: 0,
                     ),
-                    child: const Text('Balas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: _sendingId == item.id
+                        ? const SizedBox(
+                            width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Balas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -442,4 +400,13 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
       ),
     );
   }
+}
+
+String _formatWaktu(String iso) {
+  final date = DateTime.tryParse(iso)?.toLocal();
+  if (date == null) return '';
+  const bulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Ags', 'Sep', 'Okt', 'Nov', 'Des'];
+  final hh = date.hour.toString().padLeft(2, '0');
+  final mm = date.minute.toString().padLeft(2, '0');
+  return '${date.day} ${bulan[date.month - 1]}, $hh:$mm';
 }
