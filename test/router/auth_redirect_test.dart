@@ -59,11 +59,11 @@ void main() {
       );
     });
 
-    test('di register -> tetap', () {
+    test('di /register (route sudah dihapus) -> login', () {
       expect(
         resolveAuthRedirect(
             authState: unauth, hasSeenWelcome: true, location: '/register'),
-        isNull,
+        '/login',
       );
     });
   });
