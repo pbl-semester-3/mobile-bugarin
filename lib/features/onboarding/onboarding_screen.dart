@@ -1,20 +1,142 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/theme_provider.dart';
 
-class OnboardingScreen extends StatefulWidget {
+import '../../core/theme/theme_provider.dart';
+import '../../providers/auth_provider.dart';
+
+/// true  = pakai data dummy (tanpa backend). UBAH KE false SAAT BACKEND SIAP.
+const bool _kPakaiMock = true;
+
+/// SESUAIKAN dengan backend.
+final String _kBaseUrl = kIsWeb
+    ? 'http://localhost:3000/api' // Chrome / web
+    : 'http://10.0.2.2:3000/api'; // emulator Android
+
+/// SESUAIKAN dengan key JWT yang dipakai halaman login.
+const String _kTokenKey = 'auth_token';
+
+const Color _oranye = Color(0xFFFF5520);
+const Color _merah = Color(0xFFE53935);
+const String _kTidakAda = 'Tidak Ada (Bebas)';
+
+Dio _buatDio() {
+  const storage = FlutterSecureStorage();
+  final dio = Dio(
+    BaseOptions(
+      baseUrl: _kBaseUrl,
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 20),
+      headers: {'Accept': 'application/json'},
+    ),
+  );
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final token = await storage.read(key: _kTokenKey);
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+        }
+        handler.next(options);
+      },
+    ),
+  );
+  return dio;
+}
+
+String _pesanError(Object e) {
+  if (e is DioException) {
+    final data = e.response?.data;
+    if (data is Map) {
+      final msg = data['message'] ?? data['error'];
+      if (msg is String && msg.isNotEmpty) return msg;
+    }
+    switch (e.type) {
+      case DioExceptionType.connectionError:
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+        return 'Tidak dapat terhubung ke server. Periksa koneksi Anda.';
+      default:
+        break;
+    }
+  }
+  return 'Gagal menyimpan data. Silakan coba lagi.';
+}
+
+class _OnboardingRepository {
+  Future<Map<String, dynamic>> ambilProfil({required bool prefillContoh}) async {
+    if (_kPakaiMock) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!prefillContoh) return {};
+      return {
+        'usia': 26,
+        'jenis_kelamin': 'perempuan',
+        'tinggi_badan': 168,
+        'alergi': 'Laktosa, Kacang',
+        'bb_sekarang': 67.0,
+      };
+    }
+    final res = await _buatDio().get('/klien/profile');
+    final body = res.data;
+    if (body is Map<String, dynamic>) {
+      final data = body['data'];
+      return data is Map<String, dynamic> ? data : body;
+    }
+    return {};
+  }
+
+  Future<void> simpan({
+    required int usia,
+    required String jenisKelamin,
+    required int tinggiBadan,
+    required String alergi,
+    required String tujuan,
+    required double bbAwal,
+    required double bbTujuan,
+    required int durasiHari,
+  }) async {
+    if (_kPakaiMock) {
+      await Future.delayed(const Duration(milliseconds: 700));
+      return;
+    }
+    final dio = _buatDio();
+    await dio.put('/klien/profile', data: {
+      'usia': usia,
+      'jenis_kelamin': jenisKelamin,
+      'tinggi_badan': tinggiBadan,
+      'alergi': alergi,
+    });
+    await dio.post(
+      '/klien/progress-cycles',
+      data: {
+        'tujuan': tujuan,
+        'bb_awal_kg': bbAwal,
+        'bb_tujuan_kg': bbTujuan,
+        'durasi_hari': durasiHari,
+      },
+      // Pembuatan siklus bisa memicu generate Weekly Plan (AI), jadi diberi waktu lebih.
+      options: Options(receiveTimeout: const Duration(seconds: 60)),
+    );
+  }
+}
+
+class OnboardingScreen extends ConsumerStatefulWidget {
   final String mode;
   const OnboardingScreen({this.mode = 'first-time', super.key});
 
   @override
-  State<OnboardingScreen> createState() => OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => OnboardingScreenState();
 }
 
-class OnboardingScreenState extends State<OnboardingScreen> {
+class OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _storage = const FlutterSecureStorage();
-  
+  final _repo = _OnboardingRepository();
+
   bool isMale = true;
   int _age = 26;
   int _height = 175;
@@ -23,15 +145,14 @@ class OnboardingScreenState extends State<OnboardingScreen> {
     'Laktosa',
     'Gluten',
     'Seafood',
-    'Tidak Ada (Bebas)'
+    _kTidakAda,
   ];
-  final List<String> _selectedAllergies = ['Tidak Ada (Bebas)'];
-  int _targetGoalIndex = 0; // 0: Turun BB, 1: Naik BB Massa Otot
+  final List<String> _selectedAllergies = [_kTidakAda];
+  int _targetGoalIndex = 0;
   double _currentWeight = 72.5;
   double _targetWeight = 67.0;
-  
-  // Fitur Durasi Siklus Komitmen (Default: 60 Hari)
-  int _selectedDuration = 60; 
+
+  int _selectedDuration = 60;
 
   bool _isSaving = false;
 
@@ -49,46 +170,7 @@ class OnboardingScreenState extends State<OnboardingScreen> {
     _currentWeightController = TextEditingController(text: '$_currentWeight');
     _targetWeightController = TextEditingController(text: '$_targetWeight');
     _otherAllergyController = TextEditingController();
-    loadExistingData();
-  }
-
-  Future<void> loadExistingData() async {
-    final weight = await _storage.read(key: 'current_weight');
-    final height = await _storage.read(key: 'user_height');
-    final age = await _storage.read(key: 'user_age');
-    final gender = await _storage.read(key: 'user_gender');
-    final duration = await _storage.read(key: 'cycle_duration_days');
-
-    if (mounted) {
-      setState(() {
-        if (weight != null) {
-          final p = double.tryParse(weight);
-          if (p != null) {
-            _currentWeight = p;
-            _currentWeightController.text = p.toStringAsFixed(1);
-          }
-        }
-        if (height != null) {
-          final p = int.tryParse(height);
-          if (p != null) {
-            _height = p;
-            _heightController.text = '$p';
-          }
-        }
-        if (age != null) {
-          final p = int.tryParse(age);
-          if (p != null) {
-            _age = p;
-            _ageController.text = '$p';
-          }
-        }
-        if (gender != null) isMale = gender == 'male';
-        if (duration != null) {
-          final d = int.tryParse(duration);
-          if (d != null) _selectedDuration = d;
-        }
-      });
-    }
+    _muatDataAwal();
   }
 
   @override
@@ -101,16 +183,93 @@ class OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
+
+  int _batas(int v, int min, int max) => v < min ? min : (v > max ? max : v);
+
+  Future<void> _muatDataAwal() async {
+    try {
+      final p = await _repo.ambilProfil(prefillContoh: widget.mode == 'new-cycle');
+      if (!mounted || p.isEmpty) return;
+
+      setState(() {
+        final usia = int.tryParse('${p['usia'] ?? ''}');
+        if (usia != null) {
+          _age = _batas(usia, 14, 85);
+          _ageController.text = '$_age';
+        }
+
+        final tinggi = double.tryParse('${p['tinggi_badan'] ?? ''}');
+        if (tinggi != null) {
+          _height = _batas(tinggi.round(), 120, 230);
+          _heightController.text = '$_height';
+        }
+
+        final jk = '${p['jenis_kelamin'] ?? ''}'.toLowerCase();
+        if (jk == 'perempuan' || jk == 'p') isMale = false;
+        if (jk == 'laki_laki' || jk == 'l') isMale = true;
+
+        final bb = double.tryParse('${p['bb_sekarang'] ?? ''}');
+        if (bb != null && bb > 30 && bb < 250) {
+          _currentWeight = bb;
+          _currentWeightController.text = bb.toStringAsFixed(1);
+        }
+
+        final alergi = p['alergi'];
+        if (alergi != null) {
+          _terapkanAlergi(alergi is List ? alergi.join(', ') : alergi.toString());
+        }
+      });
+    } catch (_) {
+     
+    }
+  }
+
+  void _terapkanAlergi(String raw) {
+    final bagian = raw
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty && !e.toLowerCase().startsWith('tidak ada'))
+        .toList();
+    final dikenal = <String>[];
+    final lain = <String>[];
+
+    for (final b in bagian) {
+      final cocok = _allergyOptions.where(
+        (o) => o != _kTidakAda && o.toLowerCase() == b.toLowerCase(),
+      );
+      if (cocok.isNotEmpty) {
+        dikenal.add(cocok.first);
+      } else {
+        lain.add(b);
+      }
+    }
+
+    _selectedAllergies.clear();
+    if (dikenal.isEmpty && lain.isEmpty) {
+      _selectedAllergies.add(_kTidakAda);
+    } else {
+      _selectedAllergies.addAll(dikenal);
+    }
+    _otherAllergyController.text = lain.join(', ');
+  }
+
+  String _alergiUntukDikirim() {
+    final daftar = _selectedAllergies.where((a) => a != _kTidakAda).toList();
+    final lain = _otherAllergyController.text.trim();
+    if (lain.isNotEmpty) daftar.add(lain);
+    return daftar.isEmpty ? 'Tidak ada' : daftar.join(', ');
+  }
+
   void _toggleAllergy(String allergy) {
     setState(() {
-      if (allergy == 'Tidak Ada (Bebas)') {
+      if (allergy == _kTidakAda) {
         _selectedAllergies.clear();
-        _selectedAllergies.add('Tidak Ada (Bebas)');
+        _selectedAllergies.add(_kTidakAda);
       } else {
-        _selectedAllergies.remove('Tidak Ada (Bebas)');
+        _selectedAllergies.remove(_kTidakAda);
         if (_selectedAllergies.contains(allergy)) {
           _selectedAllergies.remove(allergy);
-          if (_selectedAllergies.isEmpty) _selectedAllergies.add('Tidak Ada (Bebas)');
+          if (_selectedAllergies.isEmpty) _selectedAllergies.add(_kTidakAda);
         } else {
           _selectedAllergies.add(allergy);
         }
@@ -118,46 +277,83 @@ class OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
-  int get _calculatedCalories {
-    double bmr = isMale
-        ? (10 * _currentWeight) + (6.25 * _height) - (5 * _age) + 5
-        : (10 * _currentWeight) + (6.25 * _height) - (5 * _age) - 161;
-    final tdee = bmr * 1.55; // Default Sedang
-    if (_targetGoalIndex == 0) return (tdee - 450).round().clamp(1200, 4500); // Turun
-    return (tdee + 350).round().clamp(1500, 5000); // Naik
+  void _toast(String pesan, {bool error = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: error ? _merah : null,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text(pesan),
+        ),
+      );
   }
 
+
   Future<void> submitData() async {
+    if (_isSaving) return;
+
+    final usia = int.tryParse(_ageController.text.trim());
+    final tinggi = int.tryParse(_heightController.text.trim());
+    final bbAwal = double.tryParse(_currentWeightController.text.trim().replaceAll(',', '.'));
+    final bbTujuan = double.tryParse(_targetWeightController.text.trim().replaceAll(',', '.'));
+    final turun = _targetGoalIndex == 0;
+
+    String? pesan;
+    if (usia == null || usia < 14 || usia > 85) {
+      pesan = 'Usia harus antara 14 dan 85 tahun.';
+    } else if (tinggi == null || tinggi < 120 || tinggi > 230) {
+      pesan = 'Tinggi badan harus antara 120 dan 230 cm.';
+    } else if (bbAwal == null || bbAwal < 30 || bbAwal > 250) {
+      pesan = 'Berat badan awal harus antara 30 dan 250 kg.';
+    } else if (bbTujuan == null || bbTujuan < 30 || bbTujuan > 250) {
+      pesan = 'Berat badan tujuan harus antara 30 dan 250 kg.';
+    } else if (turun && bbTujuan >= bbAwal) {
+      pesan = 'Untuk target Turun BB, berat badan tujuan harus lebih kecil dari berat badan awal.';
+    } else if (!turun && bbTujuan <= bbAwal) {
+      pesan = 'Untuk target Naik BB, berat badan tujuan harus lebih besar dari berat badan awal.';
+    }
+    if (pesan != null) {
+      _toast(pesan, error: true);
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
+      await _repo.simpan(
+        usia: usia!,
+        jenisKelamin: isMale ? 'laki_laki' : 'perempuan',
+        tinggiBadan: tinggi!,
+        alergi: _alergiUntukDikirim(),
+        tujuan: turun ? 'turun_bb' : 'naik_bb',
+        bbAwal: bbAwal!,
+        bbTujuan: bbTujuan!,
+        durasiHari: _selectedDuration,
+      );
+
       await _storage.write(key: 'has_completed_profile', value: 'true');
-      await _storage.write(key: 'user_gender', value: isMale ? 'male' : 'female');
-      await _storage.write(key: 'user_age', value: '$_age');
-      await _storage.write(key: 'user_height', value: '$_height');
-      await _storage.write(key: 'current_weight', value: '$_currentWeight');
-      await _storage.write(key: 'user_target_weight', value: '$_targetWeight');
-      await _storage.write(key: 'daily_calorie_target', value: '$_calculatedCalories');
-      await _storage.write(key: 'cycle_duration_days', value: '$_selectedDuration');
 
-      final allergyStr = _selectedAllergies.join(', ') +
-          (_otherAllergyController.text.isNotEmpty ? ', ${_otherAllergyController.text}' : '');
-      await _storage.write(key: 'user_allergies', value: allergyStr);
+      ref.read(authStateProvider.notifier).markProfileComplete();
 
-      await Future.delayed(const Duration(milliseconds: 300));
       if (!mounted) return;
       if (widget.mode == 'new-cycle') {
         context.pop();
       } else {
         context.go('/');
       }
+    } catch (e) {
+      _toast(_pesanError(e), error: true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFFFF5520);
+    const accent = _oranye;
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -233,7 +429,6 @@ class OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // SECTION 1: PROFIL DASAR
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -291,7 +486,6 @@ class OnboardingScreenState extends State<OnboardingScreen> {
                           const SizedBox(height: 20),
                           Row(
                             children: [
-                              // PENYESUAIAN USIA AGAR KONTROL & TEKS SINKRON
                               Expanded(
                                 child: _buildCounterField(
                                   'USIA',
@@ -325,7 +519,6 @@ class OnboardingScreenState extends State<OnboardingScreen> {
                                 color: context.border,
                                 margin: const EdgeInsets.symmetric(horizontal: 16),
                               ),
-                              // PENYESUAIAN TINGGI AGAR KONTROL & TEKS SINKRON
                               Expanded(
                                 child: _buildCounterField(
                                   'TINGGI',
@@ -448,7 +641,6 @@ class OnboardingScreenState extends State<OnboardingScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // SECTION 3: SIKLUS & TARGET PROGRES
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -494,8 +686,6 @@ class OnboardingScreenState extends State<OnboardingScreen> {
                             ],
                           ),
                           const SizedBox(height: 20),
-                          
-                          // PENYESUAIAN BERAT BADAN AWAL
                           _buildWeightRow(
                             'Berat Badan Awal',
                             'Masuk ke log berat perdana',
@@ -510,8 +700,10 @@ class OnboardingScreenState extends State<OnboardingScreen> {
                             },
                             () {
                               setState(() {
-                                _currentWeight += 0.5;
-                                _currentWeightController.text = _currentWeight.toStringAsFixed(1);
+                                if (_currentWeight < 250) {
+                                  _currentWeight += 0.5;
+                                  _currentWeightController.text = _currentWeight.toStringAsFixed(1);
+                                }
                               });
                             },
                             (v) {
@@ -523,8 +715,6 @@ class OnboardingScreenState extends State<OnboardingScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             child: Divider(color: context.border),
                           ),
-
-                          // PENYESUAIAN BERAT BADAN TARGET
                           _buildWeightRow(
                             'Berat Badan Tujuan',
                             'Target akhir siklus',
@@ -539,15 +729,16 @@ class OnboardingScreenState extends State<OnboardingScreen> {
                             },
                             () {
                               setState(() {
-                                _targetWeight += 0.5;
-                                _targetWeightController.text = _targetWeight.toStringAsFixed(1);
+                                if (_targetWeight < 250) {
+                                  _targetWeight += 0.5;
+                                  _targetWeightController.text = _targetWeight.toStringAsFixed(1);
+                                }
                               });
                             },
                             (v) {
                               final val = double.tryParse(v);
                               if (val != null) setState(() => _targetWeight = val);
                             },
-                            isTarget: true,
                           ),
                         ],
                       ),
@@ -630,7 +821,7 @@ class OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  // WIDGET HELPER DURASI SIKLUS
+
   Widget _buildDurationCard(int days, String label, bool isBest, Color accent) {
     final active = _selectedDuration == days;
     return Expanded(
@@ -707,11 +898,9 @@ class OnboardingScreenState extends State<OnboardingScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFFFF5520) : Colors.transparent,
+          color: active ? _oranye : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: active ? const Color(0xFFFF5520) : context.border,
-          ),
+          border: Border.all(color: active ? _oranye : context.border),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -795,11 +984,9 @@ class OnboardingScreenState extends State<OnboardingScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFFFF5520) : context.surfaceInner,
+          color: active ? _oranye : context.surfaceInner,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: active ? const Color(0xFFFF5520) : context.border,
-          ),
+          border: Border.all(color: active ? _oranye : context.border),
         ),
         child: Column(
           children: [
@@ -833,9 +1020,8 @@ class OnboardingScreenState extends State<OnboardingScreen> {
     TextEditingController ctrl,
     VoidCallback onDec,
     VoidCallback onInc,
-    Function(String) onChanged, {
-    bool isTarget = false,
-  }) {
+    Function(String) onChanged,
+  ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -860,34 +1046,30 @@ class OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             _buildBtn(Icons.remove, onDec),
             const SizedBox(width: 12),
-            Column(
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    IntrinsicWidth(
-                      child: TextField(
-                        controller: ctrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: context.textPrimary,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                          border: InputBorder.none,
-                        ),
-                        onChanged: onChanged,
-                      ),
+                IntrinsicWidth(
+                  child: TextField(
+                    controller: ctrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: context.textPrimary,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 2),
-                    Text('kg', style: TextStyle(color: context.textMuted, fontSize: 11)),
-                  ],
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                    ),
+                    onChanged: onChanged,
+                  ),
                 ),
+                const SizedBox(width: 2),
+                Text('kg', style: TextStyle(color: context.textMuted, fontSize: 11)),
               ],
             ),
             const SizedBox(width: 12),

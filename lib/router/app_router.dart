@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -12,26 +13,29 @@ part 'app_router.g.dart';
 
 @riverpod
 GoRouter appRouter(Ref ref) {
-  final authState = ref.watch(authStateProvider);
+  final refresh = ValueNotifier<int>(0);
+  ref.listen<AuthState>(authStateProvider, (_, __) => refresh.value++);
+  ref.onDispose(refresh.dispose);
 
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/welcome',
+    refreshListenable: refresh,
     redirect: (context, state) {
-      final isLoggedIn = authState is Authenticated;
+      final auth = ref.read(authStateProvider);
+      final lokasi = state.matchedLocation;
 
-      final isGoingToAuthOrWelcome = state.matchedLocation == '/welcome' ||
-          state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
+      final halamanPublik =
+          lokasi == '/welcome' || lokasi == '/login' || lokasi == '/register';
 
-      final isGoingToOnboarding = state.matchedLocation == '/onboarding';
-      final isGoingToDashboard = state.matchedLocation == '/';
-
-      if (isGoingToOnboarding || isGoingToDashboard) {
-        return null;
+      if (auth is! Authenticated) {
+        return halamanPublik ? null : '/welcome';
       }
-      if (!isLoggedIn && !isGoingToAuthOrWelcome) {
-        return '/welcome';
+
+      if (!auth.profileComplete) {
+        return lokasi == '/onboarding' ? null : '/onboarding';
       }
+
+      if (halamanPublik) return '/';
 
       return null;
     },
@@ -50,7 +54,10 @@ GoRouter appRouter(Ref ref) {
       ),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        // /onboarding?mode=new-cycle dipakai dari Profil untuk memulai siklus baru.
+        builder: (context, state) => OnboardingScreen(
+          mode: state.uri.queryParameters['mode'] ?? 'first-time',
+        ),
       ),
       GoRoute(
         path: '/',
@@ -58,4 +65,7 @@ GoRouter appRouter(Ref ref) {
       ),
     ],
   );
+
+  ref.onDispose(router.dispose);
+  return router;
 }

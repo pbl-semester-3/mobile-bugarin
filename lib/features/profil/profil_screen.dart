@@ -11,18 +11,15 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/theme_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../shared/widgets/bugarin_header.dart';
 
-// ===================== KONFIGURASI & KLIEN API =====================
-
-/// SESUAIKAN dengan alamat backend.
 /// Emulator Android -> 10.0.2.2 mengarah ke localhost komputer.
 /// Perangkat fisik -> pakai IP LAN komputer atau domain server.
 final String _kBaseUrl = kIsWeb
     ? 'http://localhost:3000/api' // Chrome / web
     : 'http://10.0.2.2:3000/api'; // emulator Android
 
-/// MODE DATA CONTOH.
 /// true  = tidak memanggil backend, memakai data dummy (untuk melihat/menguji tampilan).
 /// false = memanggil backend sungguhan. UBAH KE false SAAT BACKEND SUDAH SIAP.
 const bool _kPakaiMock = true;
@@ -131,13 +128,13 @@ class _ProgressCycle {
   });
 
   final String id;
-  final String tujuan; 
+  final String tujuan; // turun_bb | naik_bb
   final double bbAwal;
   final double bbTujuan;
   final int durasiHari;
   final double? targetKalori;
   final DateTime tanggalMulai;
-  final String status; 
+  final String status; // aktif | selesai
 
   bool get selesai => status == 'selesai';
 
@@ -175,7 +172,6 @@ class _ProgressCycle {
   }
 }
 
-/// Respons GET /klien/profile.
 /// Jika nama key dari backend berbeda, cukup ubah di factory ini.
 class _KlienProfile {
   const _KlienProfile({
@@ -197,12 +193,12 @@ class _KlienProfile {
   final String email;
   final String username;
   final int? usia;
-  final String? jenisKelamin; 
+  final String? jenisKelamin;
   final String alergi;
   final double? tinggiBadan;
   final String? fotoUrl;
-  final double? bbSekarang; 
-  final String? tema; 
+  final double? bbSekarang;
+  final String? tema;
   final DateTime? dibuatPada;
   final _ProgressCycle? cycle;
 
@@ -335,7 +331,6 @@ final _profilRepositoryProvider = Provider<_ProfilRepository>(
   (ref) => _ProfilRepository(ref.watch(_dioProvider)),
 );
 
-
 class _Field extends StatelessWidget {
   const _Field({
     required this.controller,
@@ -382,6 +377,8 @@ class _Field extends StatelessWidget {
   }
 }
 
+
+
 const Color _oranye = Color(0xFFFF5520);
 const Color _merah = Color(0xFFE53935);
 
@@ -395,6 +392,7 @@ class ProfilScreen extends ConsumerStatefulWidget {
 class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   final ImagePicker _picker = ImagePicker();
 
+  // Controllers
   final _namaCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
@@ -403,14 +401,17 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   final _tinggiCtrl = TextEditingController();
   final _bbCtrl = TextEditingController();
 
+  // State data
   _KlienProfile? _profil;
   bool _memuat = true;
   String? _errorMuat;
   String? _jenisKelamin;
 
+  // State foto
   XFile? _fotoLokal;
   int _fotoVersi = 0;
 
+  // State loading per form (submit independen sesuai PRD)
   bool _unggahFoto = false;
   bool _simpanDiri = false;
   bool _simpanTinggi = false;
@@ -500,7 +501,6 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       );
   }
 
-
   Future<void> _gantiFoto() async {
     final sumber = await showModalBottomSheet<ImageSource>(
       context: context,
@@ -560,6 +560,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       return;
     }
 
+    // Foto hasil kamera otomatis disimpan ke galeri/perpustakaan foto (jika diizinkan).
     if (sumber == ImageSource.camera) {
       await _simpanKeGaleri(dipilih.path);
     }
@@ -593,7 +594,6 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
         await Gal.putImage(path, album: 'Bugarin');
       }
     } catch (_) {
-      // Izin ditolak atau gagal menyimpan: abaikan, unggahan tetap dilanjutkan.
     }
   }
 
@@ -717,7 +717,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   }
 
   Future<void> _mulaiTargetBaru() async {
-    await context.push('/onboarding');
+    await context.push('/onboarding?mode=new-cycle');
     if (mounted) _segarkan();
   }
 
@@ -727,7 +727,9 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
     } catch (_) {
       // Sesi lokal tetap dihapus walau server tidak terjangkau.
     }
-    await ref.read(_secureStorageProvider).deleteAll();
+    // Menghapus token + mengubah status login, sehingga router otomatis
+    // mengarahkan ke /welcome (dan tidak memantulkan kembali ke beranda).
+    await ref.read(authStateProvider.notifier).logout();
   }
 
   Future<void> _logout() async {
@@ -767,10 +769,10 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
 
     await _keluarSesi();
     if (!mounted) return;
+    // Tutup halaman Profil yang dibuka dengan Navigator.push, lalu ke welcome.
+    Navigator.of(context).popUntil((route) => route.isFirst);
     context.go('/welcome');
   }
-
-  // ---------------------------------------------------------------- BUILD
 
   @override
   Widget build(BuildContext context) {
@@ -882,6 +884,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
     );
   }
 
+  // ---------------------------------------------------------------- WIDGET BAGIAN
 
   Widget _card({
     required Widget child,
@@ -1073,8 +1076,6 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   Widget _buildProgressCard(_KlienProfile p, _ProgressCycle c) {
     final double sekarang = p.bbSekarang ?? c.bbAwal;
     final double jarak = c.bbTujuan - c.bbAwal;
-    // Dihitung bertanda sehingga benar untuk Turun BB maupun Naik BB,
-    // lalu di-clamp 0..100% (angka asli tetap tersimpan di backend).
     final double rasio =
         jarak == 0 ? 0.0 : ((sekarang - c.bbAwal) / jarak).clamp(0.0, 1.0).toDouble();
     final double selisih = sekarang - c.bbAwal;
@@ -1169,7 +1170,6 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
     );
   }
 
-  /// Target kalori, durasi, dan tujuan: read-only dari progress_cycles aktif.
   Widget _buildInfoSiklus(_ProgressCycle c) {
     final kalori = c.targetKalori == null ? '-' : '${c.targetKalori!.round()} kcal/hari';
     final double progresSiklus =
