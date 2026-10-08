@@ -20,6 +20,12 @@ part 'dashboard_screen.g.dart';
 /// true  = pakai data dummy (tanpa backend). UBAH KE false SAAT BACKEND SIAP.
 const bool _kPakaiMock = true;
 
+/// Hanya berlaku saat _kPakaiMock = true. Pilih kondisi klien yang ingin dilihat:
+///  'baru'                 -> klien baru masuk: belum punya PT, kalori 0, streak 0
+///  'pt_menunggu_rencana'  -> sudah punya PT, rencana mingguan belum disetujui
+///  'berjalan'             -> sudah punya PT, jadwal tampil, kalori & streak terisi
+const String _kMockSkenario = 'baru';
+
 /// SESUAIKAN dengan backend.
 final String _kBaseUrl = kIsWeb
     ? 'http://localhost:3000/api' // Chrome / web
@@ -179,31 +185,63 @@ String? _resolveMediaUrl(String? url) {
   return url.startsWith('/') ? '$origin$url' : '$origin/$url';
 }
 
-/// Data contoh. Untuk menguji kondisi lain, ubah nilainya:
-///  - 'pt': null                          -> klien belum punya PT
-///  - 'weekly_plan_status': 'pending_review' -> menunggu PT menyetujui rencana
-///  - 'reminder_durasi_lewat': true       -> banner reminder tampil
-Map<String, dynamic> _dataContoh() => {
-      'nama': 'Maya Ayuningsih',
-      'hari_ke': 14,
-      'durasi_hari': 60,
-      'target_kalori_per_hari': 2175,
-      'kalori_masuk_hari_ini': 1420,
-      'streak_hari': 12,
-      'pt': {
-        'nama': 'Coach Sarah Jenkins',
-        'spesialisasi': 'Calisthenics & Hypertrophy',
-        'foto_url': null,
-        'tempat_gym': 'FitZone Studio B, Senopati',
-      },
-      'weekly_plan_status': 'approved',
-      'jadwal': [
-        {'hari': 'Senin', 'jam': '16:30 - 17:30 WIB', 'jenis': 'Upper Body Strength'},
-        {'hari': 'Rabu', 'jam': '16:30 - 17:30 WIB', 'jenis': 'Lower Body & Core'},
-        {'hari': 'Jumat', 'jam': '16:30 - 17:30 WIB', 'jenis': 'Full Body Circuit'},
-      ],
-      'reminder_durasi_lewat': false,
-    };
+/// Data contoh sesuai _kMockSkenario.
+Map<String, dynamic> _dataContoh() {
+  const pt = {
+    'nama': 'Coach Sarah Jenkins',
+    'spesialisasi': 'Calisthenics & Hypertrophy',
+    'foto_url': null,
+    'tempat_gym': 'FitZone Studio B, Senopati',
+  };
+
+  switch (_kMockSkenario) {
+    case 'berjalan':
+      return {
+        'nama': 'Maya Ayuningsih',
+        'hari_ke': 14,
+        'durasi_hari': 60,
+        'target_kalori_per_hari': 2175,
+        'kalori_masuk_hari_ini': 1420,
+        'streak_hari': 12,
+        'pt': pt,
+        'weekly_plan_status': 'approved',
+        'jadwal': [
+          {'hari': 'Senin', 'jam': '16:30 - 17:30 WIB', 'jenis': 'Upper Body Strength'},
+          {'hari': 'Rabu', 'jam': '16:30 - 17:30 WIB', 'jenis': 'Lower Body & Core'},
+          {'hari': 'Jumat', 'jam': '16:30 - 17:30 WIB', 'jenis': 'Full Body Circuit'},
+        ],
+        'reminder_durasi_lewat': false,
+      };
+
+    case 'pt_menunggu_rencana':
+      return {
+        'nama': 'Maya Ayuningsih',
+        'hari_ke': 2,
+        'durasi_hari': 60,
+        'target_kalori_per_hari': 2175,
+        'kalori_masuk_hari_ini': 0,
+        'streak_hari': 0,
+        'pt': pt,
+        'weekly_plan_status': 'pending_review',
+        'jadwal': <Map<String, dynamic>>[],
+        'reminder_durasi_lewat': false,
+      };
+
+    default: // 'baru'
+      return {
+        'nama': 'Maya Ayuningsih',
+        'hari_ke': 1,
+        'durasi_hari': 60,
+        'target_kalori_per_hari': 2175,
+        'kalori_masuk_hari_ini': 0,
+        'streak_hari': 0,
+        'pt': null,
+        'weekly_plan_status': null,
+        'jadwal': <Map<String, dynamic>>[],
+        'reminder_durasi_lewat': false,
+      };
+  }
+}
 
 /// Signature fungsi ini sengaja tidak diubah, sehingga dashboard_screen.g.dart
 /// yang sudah ada tetap valid (tidak perlu menjalankan build_runner lagi).

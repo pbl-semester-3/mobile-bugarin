@@ -144,6 +144,8 @@ class _AuthRepository {
   }) async {
     if (_kPakaiMock) {
       await Future.delayed(const Duration(milliseconds: 800));
+      // Akun baru = profil belum lengkap, sehingga login berikutnya masuk onboarding.
+      await _storage.delete(key: 'has_completed_profile');
       return;
     }
     await _buatDio().post('/auth/register', data: {
