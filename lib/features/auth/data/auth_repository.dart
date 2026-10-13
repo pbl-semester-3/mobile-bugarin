@@ -31,6 +31,9 @@ abstract interface class AuthRepository {
     required String password,
   });
 
+  /// Login via Google ID token (klien). Backend auto-create/link akun klien.
+  Future<AuthResult> loginWithGoogle(String idToken);
+
   Future<KlienProfile> getProfile();
 
   Future<void> logout();
@@ -69,6 +72,13 @@ class DioAuthRepository implements AuthRepository {
     return _authenticate(() => apiClient.dio.post('/auth/login', data: {
           'emailOrUsername': emailOrUsername,
           'password': password,
+        }));
+  }
+
+  @override
+  Future<AuthResult> loginWithGoogle(String idToken) {
+    return _authenticate(() => apiClient.dio.post('/auth/oauth/google', data: {
+          'idToken': idToken,
         }));
   }
 

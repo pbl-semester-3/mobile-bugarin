@@ -75,6 +75,12 @@ class AuthStateNotifier extends _$AuthStateNotifier {
     return _applyAuthResult(result);
   }
 
+  /// Login via Google ID token (klien). Backend auto-create/link akun klien.
+  Future<KlienProfile?> loginWithGoogle(String idToken) async {
+    final result = await ref.read(authRepositoryProvider).loginWithGoogle(idToken);
+    return _applyAuthResult(result);
+  }
+
   /// Registrasi klien baru (khusus role klien).
   Future<KlienProfile?> register({
     required String nama,
