@@ -9,6 +9,7 @@ import '../../db/cache_provider.dart';
 import '../../db/cache_repository.dart';
 import '../../providers/auth_provider.dart';
 import '../../shared/widgets/bugarin_header.dart';
+import '../../shell/shell_tab.dart';
 import 'data/dashboard_repository.dart';
 import 'data/dashboard_repository_provider.dart';
 import 'models/dashboard_summary.dart';
@@ -322,6 +323,21 @@ class DashboardScreen extends ConsumerWidget {
               'Pilih PT di tab "PT ku" untuk mendapatkan jadwal latihan dan panduan program.',
               textAlign: TextAlign.center,
               style: TextStyle(color: context.textSecondary, fontSize: 12, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: () => shellTabIndex.value = 1, // buka tab PT ku
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF5520),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Pilih PT', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
             ),
           ],
         ),

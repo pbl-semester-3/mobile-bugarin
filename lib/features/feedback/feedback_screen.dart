@@ -11,7 +11,9 @@ import 'models/feedback_item.dart';
 const Color _accent = Color(0xFFFF5520);
 
 class FeedbackScreen extends ConsumerStatefulWidget {
-  const FeedbackScreen({super.key});
+  /// true bila tab Feedback sedang aktif (dipakai untuk menandai sudah dibaca).
+  final bool isActive;
+  const FeedbackScreen({super.key, this.isActive = true});
 
   @override
   ConsumerState<FeedbackScreen> createState() => _FeedbackScreenState();
@@ -19,9 +21,18 @@ class FeedbackScreen extends ConsumerStatefulWidget {
 
 class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   int _selectedFilter = 0; // 0 Semua, 1 AI, 2 Coach
-  bool _sudahTandaiBaca = false;
   int? _sendingId;
   final Map<int, TextEditingController> _replyControllers = {};
+  final Set<int> _readRequested = {};
+
+  @override
+  void didUpdateWidget(covariant FeedbackScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Baru diaktifkan → tandai feedback yang belum dibaca saat ini.
+    if (widget.isActive && !oldWidget.isActive) {
+      _tandaiBacaJikaAktif(ref.read(feedbackListProvider).value);
+    }
+  }
 
   @override
   void dispose() {
@@ -48,9 +59,21 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
       );
   }
 
+  /// Tandai feedback belum dibaca sebagai "dibaca" — HANYA saat tab aktif,
+  /// agar badge di bottom nav tidak ter-reset saat app baru dibuka.
+  void _tandaiBacaJikaAktif(List<FeedbackItem>? list) {
+    if (!widget.isActive || list == null) return;
+    final unread = list
+        .where((f) => !f.dibaca && !_readRequested.contains(f.id))
+        .toList();
+    if (unread.isEmpty) return;
+    for (final f in unread) {
+      _readRequested.add(f.id);
+    }
+    _tandaiBaca(unread);
+  }
+
   Future<void> _tandaiBaca(List<FeedbackItem> unread) async {
-    if (_sudahTandaiBaca) return;
-    _sudahTandaiBaca = true;
     try {
       final repo = ref.read(feedbackRepositoryProvider);
       for (final f in unread) {
@@ -87,10 +110,7 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(feedbackListProvider, (_, next) {
-      next.whenData((list) {
-        final unread = list.where((f) => !f.dibaca).toList();
-        if (unread.isNotEmpty) _tandaiBaca(unread);
-      });
+      next.whenData((list) => _tandaiBacaJikaAktif(list));
     });
 
     final feedbackAsync = ref.watch(feedbackListProvider);
