@@ -379,8 +379,12 @@ class _LogSection extends ConsumerWidget {
           const SizedBox(height: 6),
           Row(
             children: [
+              const Icon(Icons.restaurant, size: 14, color: _primaryOrange),
+              const SizedBox(width: 4),
               Text('Masuk: ${log.kaloriMasuk} kkal', style: const TextStyle(color: _primaryOrange, fontSize: 12)),
-              Text('  •  ', style: TextStyle(color: context.textSecondary)),
+              const SizedBox(width: 12),
+              const Icon(Icons.local_fire_department, size: 14, color: Colors.redAccent),
+              const SizedBox(width: 4),
               Text('Keluar: ${log.kaloriKeluar} kkal',
                   style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
             ],

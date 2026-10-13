@@ -91,6 +91,8 @@ Error: AppError → `{ error: "pesan" }`; validasi Zod → `{ error: { fields: {
 | 6.4 | `activeCycle` null eksplisit (bukan key hilang) | Rendah (kontrak) |
 | 6.5 | Foto profil (upload + `fotoUrl`) | Opsional |
 | 6.6 | Update email/username | **Butuh keputusan produk dulu** |
+| 6.7 | `createdAt` klien | Rendah |
+| 6.8 | Endpoint Lupa Kata Sandi (`forgot-password`, `reset-password`) | Sedang (fitur baru) |
 
 ### 6.1 `passwordHash` bocor — **Tinggi (keamanan)**
 
@@ -158,6 +160,21 @@ Error: AppError → `{ error: "pesan" }`; validasi Zod → `{ error: { fields: {
 - **Gap:** mobile tidak punya `createdAt` klien → label "Member Sejak" di Profil dikosongkan.
 - **Usulan:** sertakan `createdAt` (ISO 8601, dari `users.created_at`) di `GET /klien/profile`.
 - **Prioritas:** Rendah.
+
+### 6.8 Endpoint Lupa Kata Sandi (fitur baru) — Sedang
+
+- **Fitur mobile:** "Lupa Kata Sandi" — kirim kode verifikasi ke email → verifikasi kode + set
+  kata sandi baru. Sudah diimplementasi di mobile; **endpoint backend belum ada**.
+- **Endpoint yang dibutuhkan:**
+  - `POST /auth/forgot-password` body `{ email }` → kirim kode 6 digit ke email (kedaluwarsa,
+    mis. 15 menit). Response `{ data: "ok" }`.
+  - `POST /auth/reset-password` body `{ email, kode, passwordBaru }` → validasi kode, update
+    password. Response `{ data: "ok" }`.
+- **Error yang diharapkan:** email tidak terdaftar / kode salah / kode kedaluwarsa → `400`/`404`
+  dengan `{ error: "pesan" }`.
+- **Catatan keamanan:** jangan bocorkan apakah email terdaftar (pesan generik), beri rate-limit,
+  kode sekali pakai.
+- **Prioritas:** Sedang (fitur baru).
 
 ---
 

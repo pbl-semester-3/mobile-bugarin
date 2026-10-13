@@ -6,6 +6,7 @@ import '../features/feedback/feedback_screen.dart';
 import '../features/progres/progres_screen.dart';
 import '../features/pt_ku/pt_ku_screen.dart';
 import '../features/riwayat/riwayat_screen.dart';
+import 'shell_tab.dart';
 
 class MainShell extends ConsumerStatefulWidget {
   const MainShell({super.key});
@@ -15,16 +16,28 @@ class MainShell extends ConsumerStatefulWidget {
 }
 
 class _MainShellState extends ConsumerState<MainShell> {
+  static const int _indexFeedback = 4;
   int currentIndex = 0;
 
-  // 2. Ganti PlaceholderTabScreen dengan FeedbackScreen()
-  final List<Widget> _pages = const [
-    DashboardScreen(),
-    PtKuScreen(),
-    ProgresScreen(),
-    RiwayatScreen(),
-    FeedbackScreen(), // <-- Ganti di sini
-  ];
+  @override
+  void initState() {
+    super.initState();
+    shellTabIndex.value = 0; // selalu mulai dari Beranda
+    shellTabIndex.addListener(_onTabChanged);
+  }
+
+  @override
+  void dispose() {
+    shellTabIndex.removeListener(_onTabChanged);
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    final next = shellTabIndex.value;
+    if (mounted && next != currentIndex) {
+      setState(() => currentIndex = next);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +48,13 @@ class _MainShellState extends ConsumerState<MainShell> {
       backgroundColor: context.bg,
       body: IndexedStack(
         index: currentIndex,
-        children: _pages,
+        children: [
+          const DashboardScreen(),
+          const PtKuScreen(),
+          const ProgresScreen(),
+          const RiwayatScreen(),
+          FeedbackScreen(isActive: currentIndex == _indexFeedback),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         top: false,
@@ -90,11 +109,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            setState(() {
-              currentIndex = index;
-            });
-          },
+          onTap: () => shellTabIndex.value = index,
           borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
