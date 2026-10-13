@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_error.dart';
 import 'data/auth_repository.dart';
+import 'data/google_auth_service_provider.dart';
 import 'lupa_sandi_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -167,21 +169,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
 
-  // Social auth belum punya backend OAuth — tampilkan pesan jelas, jangan
-  // menulis token dummy (menjaga sesi auth tetap bersih).
-  void _handleSocialAuth(String provider) {
+  // Login Google: ambil idToken via GoogleSignIn (serverClientId = GOOGLE_CLIENT_ID),
+  // lalu tukar ke backend `POST /auth/oauth/google`.
+  Future<void> _handleSocialAuth(String provider) async {
+    if (_socialLoadingProvider != null || _isLoading) return;
+
+    final service = ref.read(googleAuthServiceProvider);
+    if (!service.isConfigured) {
+      _showSocialError('Login Google belum dikonfigurasi (GOOGLE_CLIENT_ID kosong).');
+      return;
+    }
+
+    setState(() => _socialLoadingProvider = provider);
+    try {
+      final idToken = await service.signInAndGetIdToken();
+      if (idToken == null) return; // dibatalkan user
+
+      await ref.read(authStateProvider.notifier).loginWithGoogle(idToken);
+
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      if (navigator.canPop()) navigator.pop(); // tutup bottom sheet
+      if (mounted) context.go('/');
+    } on ApiException catch (e) {
+      _showSocialError(e.message);
+    } catch (_) {
+      _showSocialError('Gagal masuk dengan $provider. Coba lagi.');
+    } finally {
+      if (mounted) setState(() => _socialLoadingProvider = null);
+    }
+  }
+
+  void _showSocialError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: context.surfaceInner,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        content: Text(
-          'Masuk dengan $provider belum tersedia.',
-          style: TextStyle(color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.bold),
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFFE53935),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          content: Text(message, style: const TextStyle(color: Colors.white)),
         ),
-      ),
-    );
+      );
   }
 
   @override

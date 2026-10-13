@@ -85,6 +85,24 @@ void main() {
       );
     });
 
+    test('loginWithGoogle mengirim idToken & menyimpan token', () async {
+      final storage = FakeTokenStorage();
+      Map<String, dynamic>? captured;
+      final repo = _repoWith((options) async {
+        expect(options.path, '/auth/oauth/google');
+        captured = Map<String, dynamic>.from(options.data as Map);
+        return _json({
+          'data': {'token': 'jwt-google', 'role': 'klien'}
+        });
+      }, storage: storage);
+
+      final result = await repo.loginWithGoogle('id-token-google');
+
+      expect(captured!['idToken'], 'id-token-google');
+      expect(result.token, 'jwt-google');
+      expect(storage.savedToken, 'jwt-google');
+    });
+
     test('register validasi 400 mengisi fieldErrors', () async {
       final repo = _repoWith(
         (_) async => _json({
