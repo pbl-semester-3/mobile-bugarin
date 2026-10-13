@@ -32,10 +32,12 @@ class FakeTokenStorage extends TokenStorage {
 class FakeAuthRepository implements AuthRepository {
   AuthResult loginResult = const AuthResult(token: 'token', role: 'klien');
   AuthResult registerResult = const AuthResult(token: 'token', role: 'klien');
+  AuthResult loginWithGoogleResult = const AuthResult(token: 'token', role: 'klien');
 
   KlienProfile? profile;
   AuthException? loginError;
   AuthException? registerError;
+  AuthException? loginWithGoogleError;
   AuthException? profileError;
 
   String? tokenToRead;
@@ -48,6 +50,12 @@ class FakeAuthRepository implements AuthRepository {
   }) async {
     if (loginError != null) throw loginError!;
     return loginResult;
+  }
+
+  @override
+  Future<AuthResult> loginWithGoogle(String idToken) async {
+    if (loginWithGoogleError != null) throw loginWithGoogleError!;
+    return loginWithGoogleResult;
   }
 
   @override

@@ -89,6 +89,30 @@ void main() {
     expect(container.read(authStateProvider), isA<Authenticated>());
   });
 
+  test('loginWithGoogle sukses -> Authenticated', () async {
+    final fake = FakeAuthRepository()
+      ..loginWithGoogleResult = const AuthResult(token: 't', role: 'klien')
+      ..profile = _profile(complete: false);
+    final container = _container(fake);
+
+    await container.read(authStateProvider.notifier).loginWithGoogle('id-token');
+
+    expect(container.read(authStateProvider), isA<Authenticated>());
+  });
+
+  test('loginWithGoogle gagal -> state tetap Unauthenticated', () async {
+    final fake = FakeAuthRepository()
+      ..loginWithGoogleError = const AuthException('token google tidak valid');
+    final container = _container(fake);
+
+    await expectLater(
+      container.read(authStateProvider.notifier).loginWithGoogle('id-token'),
+      throwsA(isA<AuthException>()),
+    );
+
+    expect(container.read(authStateProvider), isA<Unauthenticated>());
+  });
+
   test('logout -> Unauthenticated dan repository.logout dipanggil', () async {
     final fake = FakeAuthRepository()
       ..loginResult = const AuthResult(token: 't', role: 'klien')
