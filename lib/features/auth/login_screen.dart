@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../providers/auth_provider.dart';
 import 'data/auth_repository.dart';
+import 'lupa_sandi_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   final bool initialIsLogin;
@@ -153,142 +154,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  // Dialog Lupa Kata Sandi
-  void _showForgotPasswordDialog() {
-    final emailResetController = TextEditingController();
-    bool isSending = false;
-    const accentOrange = Color(0xFFFF5520);
-
-    showDialog(
+  // Buka alur Lupa Kata Sandi (layar terpisah).
+  void _bukaLupaSandi() {
+    final id = _loginIdentifierController.text.trim();
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return Dialog(
-              backgroundColor: Colors.transparent,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                decoration: BoxDecoration(
-                  color: dialogContext.card, 
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: accentOrange.withValues(alpha: 0.3), width: 1.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: accentOrange.withValues(alpha: 0.15),
-                      blurRadius: 30,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: GestureDetector(
-                        onTap: () => Navigator.pop(dialogContext),
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(color: dialogContext.surfaceInner, shape: BoxShape.circle),
-                          child: Icon(Icons.close_rounded, color: dialogContext.textSecondary, size: 16),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: accentOrange, width: 1.5),
-                      ),
-                      child: const Icon(Icons.lock_reset_rounded, color: accentOrange, size: 28),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Atur Ulang Kata Sandi',
-                      style: TextStyle(color: dialogContext.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Kami akan mengirimkan kode verifikasi atau tautan\npemulihan ke email terdaftar Anda:',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: dialogContext.textSecondary, fontSize: 11, height: 1.4),
-                    ),
-                    const SizedBox(height: 20),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: dialogContext.surfaceInner,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: dialogContext.border),
-                      ),
-                      child: TextField(
-                        controller: emailResetController,
-                        style: TextStyle(color: dialogContext.textPrimary, fontSize: 13),
-                        decoration: InputDecoration(
-                          hintText: 'atlet.prima@bugarin.id',
-                          hintStyle: TextStyle(color: dialogContext.textMuted),
-                          prefixIcon: const Icon(Icons.mail_outline_rounded, color: accentOrange, size: 18),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 46,
-                      child: ElevatedButton(
-                        onPressed: isSending
-                            ? null
-                            : () async {
-                                setDialogState(() => isSending = true);
-                                await Future.delayed(const Duration(seconds: 1)); 
-                                if (!dialogContext.mounted) return;
-                                Navigator.pop(dialogContext);
-                                
-                                ScaffoldMessenger.of(dialogContext).showSnackBar(
-                                  SnackBar(
-                                    backgroundColor: accentOrange,
-                                    behavior: SnackBarBehavior.floating,
-                                    content: Text('Tautan pemulihan berhasil dikirim ke ${emailResetController.text.isEmpty ? "email Anda" : emailResetController.text}.', 
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                                  ),
-                                );
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: accentOrange,
-                          foregroundColor: Colors.white,
-                          elevation: 8,
-                          shadowColor: accentOrange.withValues(alpha: 0.5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: isSending
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                            : const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text('KIRIM TAUTAN PEMULIHAN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 0.5)),
-                                  SizedBox(width: 6),
-                                  Icon(Icons.arrow_forward_rounded, size: 16),
-                                ],
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    GestureDetector(
-                      onTap: () => Navigator.pop(dialogContext),
-                      child: Text('Kembali ke Login', style: TextStyle(color: dialogContext.textSecondary, fontSize: 12)),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (_) => LupaSandiScreen(initialEmail: id.contains('@') ? id : null),
     );
   }
+
 
   // Social auth belum punya backend OAuth — tampilkan pesan jelas, jangan
   // menulis token dummy (menjaga sesi auth tetap bersih).
@@ -441,7 +318,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
-                        onTap: _showForgotPasswordDialog, 
+                        onTap: _bukaLupaSandi, 
                         child: const Text('Lupa Kata Sandi?', style: TextStyle(color: accentColor, fontSize: 12, fontWeight: FontWeight.bold)),
                       ),
                     ),
