@@ -118,6 +118,37 @@ void main() {
       expect(captured!['beratBadanKg'], 70.5);
     });
 
+    test('uploadProfilePhoto mengirim multipart field foto & mengembalikan fotoUrl',
+        () async {
+      final repo = _repo((options) async {
+        expect(options.method, 'POST');
+        expect(options.path, '/klien/profile/photo');
+        final form = options.data as FormData;
+        final file = form.files.single;
+        expect(file.key, 'foto');
+        expect(file.value.filename, 'foto.jpg');
+        expect(file.value.contentType?.mimeType, 'image/jpeg');
+        return jsonResponse({'data': {'fotoUrl': 'https://cdn.test/foto.jpg'}});
+      });
+
+      final url = await repo.uploadProfilePhoto(
+        bytes: [0xFF, 0xD8, 0xFF, 0xE0],
+        filename: 'IMG_1234.jpg',
+      );
+
+      expect(url, 'https://cdn.test/foto.jpg');
+    });
+
+    test('deleteProfilePhoto mengirim DELETE /klien/profile/photo', () async {
+      final repo = _repo((options) async {
+        expect(options.method, 'DELETE');
+        expect(options.path, '/klien/profile/photo');
+        return jsonResponse({'data': {'fotoUrl': null}});
+      });
+
+      await repo.deleteProfilePhoto();
+    });
+
     test('error 422 dipetakan ke pesan backend', () async {
       final repo = _repo((_) async => jsonResponse(
             {'error': 'Harap masukkan bbAwalKg untuk siklus pertama'},

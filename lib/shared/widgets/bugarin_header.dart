@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../features/profil/profil_screen.dart';
+import '../../providers/auth_provider.dart';
 
-class BugarinHeader extends StatelessWidget {
+class BugarinHeader extends ConsumerWidget {
   final String subtitle;
   final Widget? trailingBadge;
   final bool showBackButton;
@@ -122,8 +124,14 @@ class BugarinHeader extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isDark = context.isDark;
+    final auth = ref.watch(authStateProvider);
+    final profile = auth is Authenticated ? auth.profile : null;
+    final fotoUrl = profile?.fotoUrl;
+    final inisial = (profile?.nama.trim().isEmpty ?? true)
+        ? '?'
+        : profile!.nama.trim()[0].toUpperCase();
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -224,17 +232,30 @@ class BugarinHeader extends StatelessWidget {
                   height: 38,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
+                    color: context.surfaceInner,
                     border: Border.all(
                       color: context.border,
                       width: 1.5,
                     ),
-                    image: const DecorationImage(
-                      image: NetworkImage(
-                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-                      ),
-                      fit: BoxFit.cover,
-                    ),
+                    image: fotoUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(fotoUrl),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
+                  child: fotoUrl == null
+                      ? Center(
+                          child: Text(
+                            inisial,
+                            style: const TextStyle(
+                              color: Color(0xFFFF5C39),
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               ),
             ],

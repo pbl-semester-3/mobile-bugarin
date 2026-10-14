@@ -39,6 +39,17 @@ abstract interface class ProfileRepository {
 
   /// Insert entry `weight_logs` baru; backend otomatis cek goal tercapai.
   Future<void> addWeightLog(double beratBadanKg);
+
+  /// Unggah foto profil (multipart, field `foto`). Mengembalikan `fotoUrl` baru.
+  ///
+  /// Memakai bytes (bukan path) agar kompatibel di web & Android.
+  Future<String?> uploadProfilePhoto({
+    required List<int> bytes,
+    required String filename,
+  });
+
+  /// Hapus foto profil.
+  Future<void> deleteProfilePhoto();
 }
 
 class DioProfileRepository implements ProfileRepository {
@@ -132,6 +143,42 @@ class DioProfileRepository implements ProfileRepository {
       await apiClient.dio.post('/klien/weight-logs', data: {
         'beratBadanKg': beratBadanKg,
       });
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  @override
+  Future<String?> uploadProfilePhoto({
+    required List<int> bytes,
+    required String filename,
+  }) async {
+    try {
+      final ext = filename.split('.').last.toLowerCase();
+      final mime = ext == 'png'
+          ? 'image/png'
+          : (ext == 'webp' ? 'image/webp' : 'image/jpeg');
+
+      final form = FormData.fromMap({
+        'foto': MultipartFile.fromBytes(
+          bytes,
+          filename: 'foto.$ext',
+          contentType: DioMediaType.parse(mime),
+        ),
+      });
+
+      final response = await apiClient.dio.post('/klien/profile/photo', data: form);
+      final data = response.data is Map ? (response.data as Map)['data'] : null;
+      return data is Map ? data['fotoUrl']?.toString() : null;
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  @override
+  Future<void> deleteProfilePhoto() async {
+    try {
+      await apiClient.dio.delete('/klien/profile/photo');
     } on DioException catch (e) {
       throw mapDioException(e);
     }
