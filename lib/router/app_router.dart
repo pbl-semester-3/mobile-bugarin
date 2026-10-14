@@ -29,6 +29,7 @@ GoRouter appRouter(Ref ref) {
         authState: ref.read(authStateProvider),
         hasSeenWelcome: ref.read(hasSeenWelcomeProvider),
         location: state.matchedLocation,
+        onboardingNewCycle: state.uri.queryParameters['mode'] == 'new-cycle',
       );
     },
     routes: [

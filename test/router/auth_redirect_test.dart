@@ -113,12 +113,23 @@ void main() {
       );
     });
 
-    test('di onboarding tetap diizinkan (alur mulai target baru)', () {
+    test('di onboarding TANPA mode=new-cycle -> beranda (tidak nyangkut)', () {
       expect(
         resolveAuthRedirect(
             authState: complete,
             hasSeenWelcome: true,
             location: '/onboarding'),
+        '/',
+      );
+    });
+
+    test('di onboarding dengan mode=new-cycle -> tetap (mulai target baru)', () {
+      expect(
+        resolveAuthRedirect(
+            authState: complete,
+            hasSeenWelcome: true,
+            location: '/onboarding',
+            onboardingNewCycle: true),
         isNull,
       );
     });

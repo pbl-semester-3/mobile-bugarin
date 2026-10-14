@@ -85,6 +85,7 @@ class _KlienProfile {
     required this.tinggiBadan,
     required this.tema,
     required this.cycle,
+    this.bbSekarang,
   });
 
   final String nama;
@@ -96,6 +97,7 @@ class _KlienProfile {
   final double? tinggiBadan;
   final String? tema;
   final _ProgressCycle? cycle;
+  final double? bbSekarang; // berat terkini (kg), dari bbSekarangKg backend
 
   // Backend belum menyediakan createdAt klien — biarkan kosong.
   String get memberSejak => '';
@@ -115,6 +117,7 @@ class _KlienProfile {
       tinggiBadan: p.tinggiBadanCm,
       tema: p.tema,
       cycle: p.activeCycle == null ? null : _ProgressCycle.fromApi(p.activeCycle!),
+      bbSekarang: p.bbSekarangKg,
     );
   }
 }
@@ -680,7 +683,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   }
 
   Widget _buildProgressCard(_KlienProfile p, _ProgressCycle c) {
-    final double sekarang = c.bbAwal; // Backend belum sediakan BB terkini (lihat CATATAN.md)
+    final double sekarang = p.bbSekarang ?? c.bbAwal; // berat terkini; fallback ke BB awal
     final double jarak = c.bbTujuan - c.bbAwal;
     // Dihitung bertanda sehingga benar untuk Turun BB maupun Naik BB,
     // lalu di-clamp 0..100% (angka asli tetap tersimpan di backend).

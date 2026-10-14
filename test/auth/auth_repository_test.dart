@@ -191,6 +191,22 @@ void main() {
       expect(profile.activeCycle, isNull);
     });
 
+    test('getProfile mem-parse bbSekarangKg', () async {
+      final repo = _repoWith((_) async => _json({
+            'data': {
+              'id': 1,
+              'userId': 10,
+              'nama': 'Maya',
+              'profileComplete': true,
+              'bbSekarangKg': 72.5,
+              'user': {'email': 'maya@example.com', 'username': 'mayaa'},
+            }
+          }));
+
+      final profile = await repo.getProfile();
+      expect(profile.bbSekarangKg, 72.5);
+    });
+
     test('mem-parse payload asli GET /klien/profile (fixture verifikasi manual)',
         () async {
       final repo = _repoWith((_) async => _json({

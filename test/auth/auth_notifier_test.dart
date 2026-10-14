@@ -113,6 +113,30 @@ void main() {
     expect(container.read(authStateProvider), isA<Unauthenticated>());
   });
 
+  test('login sukses tidak pernah emit profileComplete:false (regresi bug onboarding)',
+      () async {
+    final fake = FakeAuthRepository()
+      ..loginResult = const AuthResult(token: 't', role: 'klien')
+      ..profile = _profile(complete: true);
+    final container = ProviderContainer(
+      overrides: [authRepositoryProvider.overrideWithValue(fake)],
+    );
+    addTearDown(container.dispose);
+
+    final seen = <AuthState>[];
+    container.listen(authStateProvider, (_, next) => seen.add(next));
+
+    await container
+        .read(authStateProvider.notifier)
+        .login(emailOrUsername: 'a', password: 'b');
+
+    final adaFalse = seen.any((s) => s is Authenticated && !s.profileComplete);
+    expect(adaFalse, isFalse, reason: 'tidak boleh ada state transisi profileComplete=false');
+    final state = container.read(authStateProvider);
+    expect(state, isA<Authenticated>());
+    expect((state as Authenticated).profileComplete, isTrue);
+  });
+
   test('logout -> Unauthenticated dan repository.logout dipanggil', () async {
     final fake = FakeAuthRepository()
       ..loginResult = const AuthResult(token: 't', role: 'klien')
