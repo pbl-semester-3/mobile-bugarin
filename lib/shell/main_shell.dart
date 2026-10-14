@@ -49,7 +49,7 @@ class _MainShellState extends ConsumerState<MainShell> {
       body: IndexedStack(
         index: currentIndex,
         children: [
-          const DashboardScreen(),
+          DashboardScreen(isActive: currentIndex == 0),
           const PtKuScreen(),
           const ProgresScreen(),
           const RiwayatScreen(),

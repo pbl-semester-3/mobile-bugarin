@@ -56,6 +56,7 @@ class PtSummary {
 class DashboardSummary {
   final PtSummary? pt;
   final int? targetKaloriHariIni;
+  final int? kaloriMasukHariIni;
   final int streak;
   final List<WorkoutPlanItem> jadwalMingguan;
   final bool isReminderActive;
@@ -64,6 +65,7 @@ class DashboardSummary {
   const DashboardSummary({
     required this.pt,
     required this.targetKaloriHariIni,
+    this.kaloriMasukHariIni,
     required this.streak,
     required this.jadwalMingguan,
     required this.isReminderActive,
@@ -77,6 +79,7 @@ class DashboardSummary {
     return DashboardSummary(
       pt: rawPt is Map ? PtSummary.fromJson(Map<String, dynamic>.from(rawPt)) : null,
       targetKaloriHariIni: (json['targetKaloriHariIni'] as num?)?.toInt(),
+      kaloriMasukHariIni: (json['kaloriMasukHariIni'] as num?)?.toInt(),
       streak: (json['streak'] as num?)?.toInt() ?? 0,
       jadwalMingguan: rawJadwal is List
           ? rawJadwal
@@ -92,6 +95,7 @@ class DashboardSummary {
   Map<String, dynamic> toJson() => {
         'pt': pt?.toJson(),
         'targetKaloriHariIni': targetKaloriHariIni,
+        'kaloriMasukHariIni': kaloriMasukHariIni,
         'streak': streak,
         'jadwalMingguan': jadwalMingguan.map((e) => e.toJson()).toList(),
         'isReminderActive': isReminderActive,

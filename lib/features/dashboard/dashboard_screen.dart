@@ -47,8 +47,55 @@ Stream<DashboardSummary> dashboardSummary(Ref ref) {
   );
 }
 
-class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+class DashboardScreen extends ConsumerStatefulWidget {
+  /// true bila tab Beranda sedang aktif (memicu ulang animasi ring saat dibuka).
+  final bool isActive;
+  const DashboardScreen({super.key, this.isActive = true});
+
+  @override
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _animation;
+  bool _needsAnim = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Animasi hanya saat halaman dibuka kembali (tab aktif) — bukan saat refresh.
+    if (widget.isActive && !oldWidget.isActive) {
+      _needsAnim = true;
+      _maybeAnimate();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Jalankan animasi sekali saat data siap / halaman dibuka.
+  void _maybeAnimate() {
+    if (!_needsAnim) return;
+    _needsAnim = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _controller.forward(from: 0.0);
+    });
+  }
 
   String _formatKcal(int value) {
     return value.toString().replaceAllMapped(
@@ -58,7 +105,12 @@ class DashboardScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
+    // Animasi dipicu saat data pertama tersedia (bukan tiap refresh).
+    ref.listen(dashboardSummaryProvider, (_, next) {
+      if (next.hasValue) _maybeAnimate();
+    });
+
     final summaryAsync = ref.watch(dashboardSummaryProvider);
     final auth = ref.watch(authStateProvider);
 
@@ -157,9 +209,13 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  // Kartu kalori: TARGET-ONLY (backend belum kirim kalori masuk hari ini).
+  // Kartu kalori: angka tengah = target harian (patokan); ring = kalori masuk / target.
   Widget _buildKaloriCard(DashboardSummary data) {
     final target = data.targetKaloriHariIni;
+    final consumed = data.kaloriMasukHariIni ?? 0;
+    final progress = (target != null && target > 0)
+        ? (consumed / target).clamp(0.0, 1.0)
+        : 0.0;
 
     return Builder(
       builder: (context) => Container(
@@ -173,47 +229,50 @@ class DashboardScreen extends ConsumerWidget {
           children: [
             SizedBox(
               height: 210,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  CustomPaint(
-                    size: const Size(210, 210),
-                    painter: LiveArcPainter(
-                      progress: 1.0, // ring dekoratif (target-only)
-                      strokeWidth: 14.0,
-                      trackColor: context.isDark ? const Color(0xFF162520) : const Color(0xFFE2E8E5),
-                      activeColor: const Color(0xFFFF5520),
+              child: AnimatedBuilder(
+                animation: _animation,
+                builder: (context, _) => Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CustomPaint(
+                      size: const Size(210, 210),
+                      painter: LiveArcPainter(
+                        progress: progress * _animation.value,
+                        strokeWidth: 14.0,
+                        trackColor: context.isDark ? const Color(0xFF162520) : const Color(0xFFE2E8E5),
+                        activeColor: const Color(0xFFFF5520),
+                      ),
                     ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        target == null ? '--' : _formatKcal(target),
-                        style: TextStyle(
-                            color: context.textPrimary,
-                            fontSize: 38,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.5),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'KKAL / HARI',
-                        style: TextStyle(
-                            color: context.textSecondary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        target == null ? 'Belum ada target aktif' : 'Target kalori harian',
-                        style: TextStyle(
-                            color: context.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
-                      ),
-                    ],
-                  ),
-                ],
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          target == null ? '--' : _formatKcal(target),
+                          style: TextStyle(
+                              color: context.textPrimary,
+                              fontSize: 38,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'KKAL / HARI',
+                          style: TextStyle(
+                              color: context.textSecondary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          target == null ? 'Belum ada target aktif' : 'Target kalori harian',
+                          style: TextStyle(
+                              color: context.textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 22),
