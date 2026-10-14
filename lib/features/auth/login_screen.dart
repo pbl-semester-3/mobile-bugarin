@@ -109,7 +109,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
         messenger.showSnackBar(
           SnackBar(
-            backgroundColor: const Color(0xFFFF5520),
+            backgroundColor: const Color(0xFFFF5C39),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             content: const Row(
@@ -217,7 +217,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    const accentColor = Color(0xFFFF5520);
+    const accentColor = Color(0xFFFF5C39);
     const errorColor = Color(0xFFEF4444);
 
     return Scaffold(
@@ -426,7 +426,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFFFF5520) : Colors.transparent,
+          color: isSelected ? const Color(0xFFFF5C39) : Colors.transparent,
           borderRadius: BorderRadius.circular(20)
         ),
         child: Row(
@@ -518,7 +518,7 @@ class SocialAuthCard extends StatelessWidget {
       child: InkWell(
         onTap: isLoading ? null : onTap,
         borderRadius: BorderRadius.circular(16),
-        splashColor: const Color(0xFFFF5520).withValues(alpha: 0.2),
+        splashColor: const Color(0xFFFF5C39).withValues(alpha: 0.2),
         highlightColor: context.textPrimary.withValues(alpha: 0.05),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 13),
@@ -531,7 +531,7 @@ class SocialAuthCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (isLoading)
-                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5520)))
+                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF5C39)))
               else ...[
                 customIcon,
                 const SizedBox(width: 8),

@@ -8,7 +8,7 @@ import '../dashboard/dashboard_screen.dart' show dashboardSummaryProvider;
 import 'data/feedback_providers.dart';
 import 'models/feedback_item.dart';
 
-const Color _accent = Color(0xFFFF5520);
+const Color _accent = Color(0xFFFF5C39);
 
 class FeedbackScreen extends ConsumerStatefulWidget {
   /// true bila tab Feedback sedang aktif (dipakai untuk menandai sudah dibaca).

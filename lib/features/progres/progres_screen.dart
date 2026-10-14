@@ -177,7 +177,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
             labelText: 'Porsi (gram)',
             labelStyle: TextStyle(color: context.textSecondary),
             enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: context.border)),
-            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF5520))),
+            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF5C39))),
           ),
         ),
         actions: [
@@ -194,7 +194,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
               Navigator.pop(ctx);
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF5520),
+              backgroundColor: const Color(0xFFFF5C39),
               foregroundColor: Colors.white,
             ),
             child: const Text('Simpan'),
@@ -213,7 +213,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
       backgroundColor: context.bg,
       body: SafeArea(
         child: masterAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFFFF5520))),
+          loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFFFF5C39))),
           error: (err, _) => _buildError(
             err is ApiException ? err.message : 'Gagal memuat data.',
           ),
@@ -310,7 +310,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
             ElevatedButton(
               onPressed: () => ref.invalidate(masterDataProvider),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5520),
+                backgroundColor: const Color(0xFFFF5C39),
                 foregroundColor: Colors.white,
               ),
               child: const Text('Coba Lagi'),
@@ -329,7 +329,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: active ? const Color(0xFFFF5520) : Colors.transparent,
+            color: active ? const Color(0xFFFF5C39) : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Center(
@@ -408,7 +408,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                 color: context.card,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
-                  color: selected ? const Color(0xFFFF5520).withValues(alpha: 0.4) : context.border,
+                  color: selected ? const Color(0xFFFF5C39).withValues(alpha: 0.4) : context.border,
                 ),
               ),
               child: Row(
@@ -452,7 +452,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: selected ? const Color(0xFFFF5520) : context.surfaceInner,
+                        color: selected ? const Color(0xFFFF5C39) : context.surfaceInner,
                         shape: BoxShape.circle,
                         border: Border.all(color: selected ? Colors.transparent : context.border),
                       ),
@@ -544,7 +544,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                       child: ElevatedButton(
                         onPressed: _menyimpanMeal ? null : _submitMeals,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF5520),
+                          backgroundColor: const Color(0xFFFF5C39),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -590,7 +590,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
               value: selected,
               isExpanded: true,
               dropdownColor: context.card,
-              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFFFF5520)),
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFFFF5C39)),
               items: olahragaList
                   .map((item) => DropdownMenuItem<MasterOlahraga>(
                         value: item,
@@ -620,7 +620,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
           child: ElevatedButton(
             onPressed: _menyimpanAktivitas ? null : () => _submitActivity(selected),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF5520),
+              backgroundColor: const Color(0xFFFF5C39),
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -638,7 +638,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
             Text('Riwayat Hari Ini',
                 style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
             Text('Total: $_totalKaloriTerbakar kkal',
-                style: const TextStyle(color: Color(0xFFFF5520), fontSize: 12, fontWeight: FontWeight.bold)),
+                style: const TextStyle(color: Color(0xFFFF5C39), fontSize: 12, fontWeight: FontWeight.bold)),
           ],
         ),
         const SizedBox(height: 12),
@@ -683,7 +683,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                     ),
                     child: Text('${act.kaloriTerbakar} kkal',
                         style: const TextStyle(
-                            color: Color(0xFFFF5520), fontSize: 11, fontWeight: FontWeight.bold)),
+                            color: Color(0xFFFF5C39), fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),

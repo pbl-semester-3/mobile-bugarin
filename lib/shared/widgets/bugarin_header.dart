@@ -57,7 +57,7 @@ class BugarinHeader extends StatelessWidget {
                   const Text(
                     'Tandai sudah dibaca',
                     style: TextStyle(
-                      color: Color(0xFFFF5520),
+                      color: Color(0xFFFF5C39),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -79,11 +79,11 @@ class BugarinHeader extends StatelessWidget {
                       height: 38,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isDark ? const Color(0xFF1A2E27) : const Color(0xFFFFECE5),
+                        color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFFECE5),
                       ),
                       child: const Icon(
                         Icons.access_time_rounded,
-                        color: Color(0xFFFF5520),
+                        color: Color(0xFFFF5C39),
                         size: 20,
                       ),
                     ),
@@ -157,7 +157,7 @@ class BugarinHeader extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: context.card,
                 border: Border.all(
-                  color: const Color(0xFFFF5520),
+                  color: const Color(0xFFFF5C39),
                   width: 1.5,
                 ),
               ),
@@ -165,7 +165,7 @@ class BugarinHeader extends StatelessWidget {
                 child: Text(
                   'B',
                   style: TextStyle(
-                    color: Color(0xFFFF5520),
+                    color: Color(0xFFFF5C39),
                     fontWeight: FontWeight.w900,
                     fontSize: 16,
                   ),

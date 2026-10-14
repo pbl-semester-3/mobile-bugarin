@@ -7,7 +7,7 @@ import '../../shared/widgets/bugarin_header.dart';
 import 'data/pt_repository_provider.dart';
 import 'models/pt_models.dart';
 
-const Color _accent = Color(0xFFFF5520);
+const Color _accent = Color(0xFFFF5C39);
 
 class PtKuScreen extends ConsumerStatefulWidget {
   const PtKuScreen({super.key});

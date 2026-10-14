@@ -130,14 +130,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       body: SafeArea(
         child: summaryAsync.when(
           loading: () => const Center(
-            child: CircularProgressIndicator(color: Color(0xFFFF5520), strokeWidth: 2.2),
+            child: CircularProgressIndicator(color: Color(0xFFFF5C39), strokeWidth: 2.2),
           ),
           error: (err, _) => _ErrorState(
             message: err is Exception ? '$err' : 'Gagal memuat dashboard.',
             onRetry: () => ref.invalidate(dashboardSummaryProvider),
           ),
           data: (data) => RefreshIndicator(
-            color: const Color(0xFFFF5520),
+            color: const Color(0xFFFF5C39),
             onRefresh: () async => ref.invalidate(dashboardSummaryProvider),
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -189,13 +189,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFF5520).withValues(alpha: 0.12),
+          color: const Color(0xFFFF5C39).withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFFF5520).withValues(alpha: 0.4)),
+          border: Border.all(color: const Color(0xFFFF5C39).withValues(alpha: 0.4)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.timer_outlined, color: Color(0xFFFF5520), size: 20),
+            const Icon(Icons.timer_outlined, color: Color(0xFFFF5C39), size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -239,8 +239,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                       painter: LiveArcPainter(
                         progress: progress * _animation.value,
                         strokeWidth: 14.0,
-                        trackColor: context.isDark ? const Color(0xFF162520) : const Color(0xFFE2E8E5),
-                        activeColor: const Color(0xFFFF5520),
+                        trackColor: context.isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE2E8E5),
+                        activeColor: const Color(0xFFFF5C39),
                       ),
                     ),
                     Column(
@@ -290,10 +290,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     height: 36,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: context.isDark ? const Color(0xFF1A2E27) : const Color(0xFFFFECE5),
+                      color: context.isDark ? const Color(0xFF2A2A2A) : const Color(0xFFFFECE5),
                     ),
                     child: const Icon(Icons.local_fire_department_rounded,
-                        color: Color(0xFFFF5520), size: 20),
+                        color: Color(0xFFFF5C39), size: 20),
                   ),
                   const SizedBox(width: 12),
                   Column(
@@ -370,9 +370,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: context.surfaceInner,
-                border: Border.all(color: const Color(0xFFFF5520), width: 1.8),
+                border: Border.all(color: const Color(0xFFFF5C39), width: 1.8),
               ),
-              child: const Icon(Icons.sports, color: Color(0xFFFF5520), size: 26),
+              child: const Icon(Icons.sports, color: Color(0xFFFF5C39), size: 26),
             ),
             const SizedBox(height: 14),
             Text('Belum punya Personal Trainer',
@@ -390,7 +390,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               child: ElevatedButton(
                 onPressed: () => shellTabIndex.value = 1, // buka tab PT ku
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF5520),
+                  backgroundColor: const Color(0xFFFF5C39),
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -421,12 +421,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: context.surfaceInner,
-                border: Border.all(color: const Color(0xFFFF5520), width: 1.8),
+                border: Border.all(color: const Color(0xFFFF5C39), width: 1.8),
               ),
               child: Center(
                 child: Text(
                   pt.nama.trim().isEmpty ? '?' : pt.nama.trim()[0].toUpperCase(),
-                  style: const TextStyle(color: Color(0xFFFF5520), fontSize: 22, fontWeight: FontWeight.bold),
+                  style: const TextStyle(color: Color(0xFFFF5C39), fontSize: 22, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -501,7 +501,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: context.border),
               ),
-              child: const Icon(Icons.fitness_center_rounded, color: Color(0xFFFF5520), size: 20),
+              child: const Icon(Icons.fitness_center_rounded, color: Color(0xFFFF5C39), size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -513,7 +513,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today_rounded, size: 12, color: Color(0xFFFF5520)),
+                      const Icon(Icons.calendar_today_rounded, size: 12, color: Color(0xFFFF5C39)),
                       const SizedBox(width: 4),
                       Text('${item.hari}, ${item.jam}',
                           style: TextStyle(color: context.textSecondary, fontSize: 11)),
@@ -523,7 +523,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        const Icon(Icons.location_on_outlined, size: 12, color: Color(0xFFFF5520)),
+                        const Icon(Icons.location_on_outlined, size: 12, color: Color(0xFFFF5C39)),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(item.lokasi,
@@ -566,7 +566,7 @@ class _ErrorState extends StatelessWidget {
             ElevatedButton(
               onPressed: onRetry,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF5520),
+                backgroundColor: const Color(0xFFFF5C39),
                 foregroundColor: Colors.white,
               ),
               child: const Text('Coba Lagi'),

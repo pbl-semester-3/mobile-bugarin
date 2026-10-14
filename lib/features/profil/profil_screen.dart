@@ -168,7 +168,7 @@ class _Field extends StatelessWidget {
   }
 }
 
-const Color _oranye = Color(0xFFFF5520);
+const Color _oranye = Color(0xFFFF5C39);
 const Color _merah = Color(0xFFE53935);
 
 class ProfilScreen extends ConsumerStatefulWidget {
@@ -663,7 +663,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
         decoration: BoxDecoration(
           color: context.card,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0x4DFF5520)),
+          border: Border.all(color: const Color(0x4DFF5C39)),
         ),
         child: const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1098,7 +1098,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
                 Container(
                   padding: const EdgeInsets.all(3),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF0A1310) : const Color(0xFFDDE4E0),
+                    color: isDark ? const Color(0xFF0E0E10) : const Color(0xFFDDE4E0),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(

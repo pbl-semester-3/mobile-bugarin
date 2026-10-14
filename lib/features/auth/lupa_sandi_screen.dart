@@ -8,7 +8,7 @@ import '../../core/theme/theme_provider.dart';
 import '../../services/api_error.dart';
 import 'data/recovery_repository_provider.dart';
 
-const Color _oranye = Color(0xFFFF5520);
+const Color _oranye = Color(0xFFFF5C39);
 const Color _merah = Color(0xFFE53935);
 
 /// Alur Lupa Kata Sandi: kirim kode verifikasi ke email → verifikasi kode +

@@ -7,7 +7,7 @@ import '../auth/models/progress_cycle.dart';
 import 'data/riwayat_providers.dart';
 import 'models/daily_log.dart';
 
-const Color _primaryOrange = Color(0xFFFF5520);
+const Color _primaryOrange = Color(0xFFFF5C39);
 
 class RiwayatScreen extends ConsumerStatefulWidget {
   const RiwayatScreen({super.key});

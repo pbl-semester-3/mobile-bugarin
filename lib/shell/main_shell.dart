@@ -101,7 +101,7 @@ class _MainShellState extends ConsumerState<MainShell> {
   }) {
     final isSelected = currentIndex == index;
     final Color activeColor = isSelected
-        ? const Color(0xFFFF5520)
+        ? const Color(0xFFFF5C39)
         : (context.isDark ? Colors.white : const Color(0xFF0E1714));
     final Color inactiveColor = context.textSecondary;
 

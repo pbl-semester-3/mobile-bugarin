@@ -100,7 +100,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProvid
                     border: Border.all(color: context.border, width: 2),
                   ),
                   child: const Center(
-                    child: Text('B', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFFFF5520))),
+                    child: Text('B', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFFFF5C39))),
                   ),
                 ),
               )
@@ -138,10 +138,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProvid
                             stops: const [0.0, 0.45, 0.8, 1.0],
                             colors: isDark
                                 ? [
-                                    const Color(0xFF090E0C).withValues(alpha: 0.3),
-                                    const Color(0xFF090E0C).withValues(alpha: 0.65),
-                                    const Color(0xFF090E0C).withValues(alpha: 0.95),
-                                    const Color(0xFF090E0C),
+                                    const Color(0xFF0E0E10).withValues(alpha: 0.3),
+                                    const Color(0xFF0E0E10).withValues(alpha: 0.65),
+                                    const Color(0xFF0E0E10).withValues(alpha: 0.95),
+                                    const Color(0xFF0E0E10),
                                   ]
                                 : [
                                     const Color(0xFFF4F7F5).withValues(alpha: 0.2),
@@ -185,10 +185,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProvid
                                       height: 66,
                                       decoration: BoxDecoration(
                                         shape: BoxShape.circle,
-                                        border: Border.all(color: const Color(0xFFFF5520).withValues(alpha: 0.4), width: 1.5),
+                                        border: Border.all(color: const Color(0xFFFF5C39).withValues(alpha: 0.4), width: 1.5),
                                       ),
                                     ),
-                                    const Text('B', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: Color(0xFFFF5520))),
+                                    const Text('B', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: Color(0xFFFF5C39))),
                                   ],
                                 ),
                               ),
@@ -242,10 +242,10 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProvid
                                   height: 64,
                                   padding: const EdgeInsets.symmetric(horizontal: 10),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFFF5520), // Oranye Solid
+                                    color: const Color(0xFFFF5C39), // Oranye Solid
                                     borderRadius: BorderRadius.circular(36),
                                     boxShadow: const [
-                                      BoxShadow(color: Color(0x40FF5520), blurRadius: 18, offset: Offset(0, 6)),
+                                      BoxShadow(color: Color(0x40FF5C39), blurRadius: 18, offset: Offset(0, 6)),
                                     ],
                                   ),
                                   child: Row(
@@ -254,7 +254,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProvid
                                         width: 46,
                                         height: 46,
                                         decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
-                                        child: const Icon(Icons.north_east_rounded, color: Color(0xFFFF5520), size: 22),
+                                        child: const Icon(Icons.north_east_rounded, color: Color(0xFFFF5C39), size: 22),
                                       ),
                                       const Expanded(
                                         child: Center(
@@ -280,13 +280,13 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProvid
                                     Text('Sudah punya akun? ', style: TextStyle(color: context.textSecondary, fontSize: 12)),
                                     GestureDetector(
                                       onTap: () => _openAuthSheet(isLogin: false),
-                                      child: const Text('Masuk', style: TextStyle(color: Color(0xFFFF5520), fontWeight: FontWeight.w700, fontSize: 12)),
+                                      child: const Text('Masuk', style: TextStyle(color: Color(0xFFFF5C39), fontWeight: FontWeight.w700, fontSize: 12)),
                                     ),
                                   ],
                                 ),
                                 Row(
                                   children: [
-                                    const Icon(Icons.circle, size: 6, color: Color(0xFFFF5520)),
+                                    const Icon(Icons.circle, size: 6, color: Color(0xFFFF5C39)),
                                     const SizedBox(width: 6),
                                     Text('v2.4 Pro', style: TextStyle(color: context.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
                                   ],

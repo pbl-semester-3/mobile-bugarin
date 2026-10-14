@@ -200,7 +200,7 @@ class OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const accent = Color(0xFFFF5520);
+    const accent = Color(0xFFFF5C39);
 
     return Scaffold(
       backgroundColor: context.bg,
@@ -750,10 +750,10 @@ class OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFFFF5520) : Colors.transparent,
+          color: active ? const Color(0xFFFF5C39) : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: active ? const Color(0xFFFF5520) : context.border,
+            color: active ? const Color(0xFFFF5C39) : context.border,
           ),
         ),
         child: Row(
@@ -838,10 +838,10 @@ class OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: active ? const Color(0xFFFF5520) : context.surfaceInner,
+          color: active ? const Color(0xFFFF5C39) : context.surfaceInner,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: active ? const Color(0xFFFF5520) : context.border,
+            color: active ? const Color(0xFFFF5C39) : context.border,
           ),
         ),
         child: Column(
