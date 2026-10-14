@@ -23,6 +23,9 @@ class KlienProfile {
   final bool profileComplete;
   final ProgressCycle? activeCycle;
 
+  /// Berat badan terkini (weight_logs terakhir), kg. `null` bila belum ada.
+  final double? bbSekarangKg;
+
   const KlienProfile({
     required this.id,
     required this.userId,
@@ -38,6 +41,7 @@ class KlienProfile {
     this.role,
     required this.profileComplete,
     this.activeCycle,
+    this.bbSekarangKg,
   });
 
   bool get hasPt => ptId != null;
@@ -63,6 +67,7 @@ class KlienProfile {
       profileComplete: json['profileComplete'] as bool? ?? false,
       activeCycle:
           active is Map ? ProgressCycle.fromJson(Map<String, dynamic>.from(active)) : null,
+      bbSekarangKg: (json['bbSekarangKg'] as num?)?.toDouble(),
     );
   }
 }

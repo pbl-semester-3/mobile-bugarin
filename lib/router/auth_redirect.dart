@@ -8,6 +8,7 @@ String? resolveAuthRedirect({
   required AuthState authState,
   required bool hasSeenWelcome,
   required String location,
+  bool onboardingNewCycle = false,
 }) {
   // `/register` tidak lagi punya route sendiri (pendaftaran lewat toggle di
   // Login), jadi tidak dianggap halaman auth yang boleh diakses langsung.
@@ -37,11 +38,16 @@ String? resolveAuthRedirect({
   }
 
   // Sudah login + lengkap: jangan biarkan balik ke halaman auth/welcome.
-  // `/onboarding` tetap diizinkan (dipakai alur "mulai target baru").
   if (location == '/login' ||
       location == '/register' ||
       location == '/welcome' ||
       location == '/splash') {
+    return '/';
+  }
+
+  // `/onboarding` hanya untuk alur "mulai target baru" (mode=new-cycle).
+  // Tanpa mode itu, user lengkap tidak boleh nyangkut di Onboarding.
+  if (location == '/onboarding' && !onboardingNewCycle) {
     return '/';
   }
 

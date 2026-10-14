@@ -98,9 +98,9 @@ class AuthStateNotifier extends _$AuthStateNotifier {
   }
 
   Future<KlienProfile?> _applyAuthResult(AuthResult result) async {
-    // Token sudah tersimpan; langsung tandai login walau profil belum sempat di-fetch.
-    state = Authenticated(role: result.role, profileComplete: false);
-
+    // Fetch profil DULU, baru set state SEKALI. Mencegah guard me-redirect ke
+    // Onboarding karena state transisi `profileComplete: false`
+    // (bug: user yang sudah lengkap selalu dilempar ke Onboarding setelah login).
     try {
       final profile = await ref.read(authRepositoryProvider).getProfile();
       state = Authenticated(
@@ -110,7 +110,9 @@ class AuthStateNotifier extends _$AuthStateNotifier {
       );
       return profile;
     } on AuthException {
-      // Tetap terautentikasi; profil bisa di-fetch ulang nanti.
+      // Token tersimpan tapi profil gagal diambil → tetap tandai login;
+      // guard akan meminta lengkapi profil.
+      state = Authenticated(role: result.role, profileComplete: false);
       return null;
     }
   }
