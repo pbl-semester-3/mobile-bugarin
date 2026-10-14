@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/theme/theme_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -86,6 +87,7 @@ class _KlienProfile {
     required this.tema,
     required this.cycle,
     this.bbSekarang,
+    this.fotoUrl,
   });
 
   final String nama;
@@ -98,6 +100,7 @@ class _KlienProfile {
   final String? tema;
   final _ProgressCycle? cycle;
   final double? bbSekarang; // berat terkini (kg), dari bbSekarangKg backend
+  final String? fotoUrl; // foto profil (Cloudinary)
 
   // Backend belum menyediakan createdAt klien — biarkan kosong.
   String get memberSejak => '';
@@ -118,6 +121,7 @@ class _KlienProfile {
       tema: p.tema,
       cycle: p.activeCycle == null ? null : _ProgressCycle.fromApi(p.activeCycle!),
       bbSekarang: p.bbSekarangKg,
+      fotoUrl: p.fotoUrl,
     );
   }
 }
@@ -195,6 +199,7 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
   bool _simpanDiri = false;
   bool _simpanTinggi = false;
   bool _simpanBB = false;
+  bool _memprosesFoto = false;
 
   @override
   void initState() {
@@ -253,8 +258,12 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
 
   Future<void> _segarkan() async {
     try {
-      final p = await _ambilProfil();
-      if (mounted) setState(() => _profil = p);
+      // Sinkronkan state auth global sekaligus, agar avatar di header
+      // (BugarinHeader) ikut ter-update setelah foto/profil berubah.
+      final api = await ref.read(authStateProvider.notifier).refreshProfile();
+      if (mounted && api != null) {
+        setState(() => _profil = _KlienProfile.fromApi(api));
+      }
     } catch (_) {}
   }
 
@@ -356,6 +365,91 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
       _toast(_pesanError(e, fallback: 'Gagal mencatat berat badan.'), error: true);
     } finally {
       if (mounted) setState(() => _simpanBB = false);
+    }
+  }
+
+  Future<void> _bukaPilihanFoto(_KlienProfile p) async {
+    if (_memprosesFoto) return;
+    final pilihan = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: context.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            _opsiFoto(ctx, Icons.photo_camera_rounded, 'Ambil dari kamera', 'kamera'),
+            _opsiFoto(ctx, Icons.photo_library_rounded, 'Pilih dari galeri', 'galeri'),
+            if (p.fotoUrl != null)
+              _opsiFoto(ctx, Icons.delete_outline_rounded, 'Hapus foto', 'hapus',
+                  warna: Colors.red),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (pilihan == null || !mounted) return;
+    if (pilihan == 'hapus') {
+      await _hapusFoto();
+    } else {
+      await _ambilDanUnggahFoto(
+        pilihan == 'kamera' ? ImageSource.camera : ImageSource.gallery,
+      );
+    }
+  }
+
+  Widget _opsiFoto(BuildContext ctx, IconData ikon, String label, String nilai,
+      {Color? warna}) {
+    return ListTile(
+      leading: Icon(ikon, color: warna ?? context.primary),
+      title: Text(label, style: TextStyle(color: warna ?? context.textPrimary)),
+      onTap: () => Navigator.pop(ctx, nilai),
+    );
+  }
+
+  Future<void> _ambilDanUnggahFoto(ImageSource sumber) async {
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: sumber,
+        maxWidth: 1024,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      await _unggahFoto(bytes, picked.name);
+    } catch (e) {
+      _toast(_pesanError(e, fallback: 'Gagal mengambil foto.'), error: true);
+    }
+  }
+
+  Future<void> _unggahFoto(List<int> bytes, String filename) async {
+    setState(() => _memprosesFoto = true);
+    try {
+      await ref
+          .read(profileRepositoryProvider)
+          .uploadProfilePhoto(bytes: bytes, filename: filename);
+      await _segarkan();
+      _toast('Foto profil berhasil diperbarui.');
+    } catch (e) {
+      _toast(_pesanError(e, fallback: 'Gagal mengunggah foto.'), error: true);
+    } finally {
+      if (mounted) setState(() => _memprosesFoto = false);
+    }
+  }
+
+  Future<void> _hapusFoto() async {
+    setState(() => _memprosesFoto = true);
+    try {
+      await ref.read(profileRepositoryProvider).deleteProfilePhoto();
+      await _segarkan();
+      _toast('Foto profil dihapus.');
+    } catch (e) {
+      _toast(_pesanError(e, fallback: 'Gagal menghapus foto.'), error: true);
+    } finally {
+      if (mounted) setState(() => _memprosesFoto = false);
     }
   }
 
@@ -592,23 +686,41 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
 
   Widget _buildAvatar(_KlienProfile p) {
     final inisial = p.nama.trim().isEmpty ? '?' : p.nama.trim()[0].toUpperCase();
+    final foto = p.fotoUrl;
 
-    return SizedBox(
-      width: 90,
-      height: 90,
-      child: Container(
-        width: 86,
-        height: 86,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: context.surfaceInner,
-          border: Border.all(color: _oranye, width: 2.2),
-        ),
-        child: Center(
-          child: Text(
-            inisial,
-            style: const TextStyle(color: _oranye, fontSize: 32, fontWeight: FontWeight.bold),
+    return GestureDetector(
+      onTap: () => _bukaPilihanFoto(p),
+      child: SizedBox(
+        width: 90,
+        height: 90,
+        child: Container(
+          width: 86,
+          height: 86,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: context.surfaceInner,
+            border: Border.all(color: _oranye, width: 2.2),
+            image: foto != null
+                ? DecorationImage(image: NetworkImage(foto), fit: BoxFit.cover)
+                : null,
           ),
+          child: _memprosesFoto
+              ? const Center(
+                  child: SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+                )
+              : (foto == null
+                  ? Center(
+                      child: Text(
+                        inisial,
+                        style: const TextStyle(
+                            color: _oranye, fontSize: 32, fontWeight: FontWeight.bold),
+                      ),
+                    )
+                  : null),
         ),
       ),
     );

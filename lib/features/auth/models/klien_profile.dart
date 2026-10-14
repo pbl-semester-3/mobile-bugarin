@@ -26,6 +26,9 @@ class KlienProfile {
   /// Berat badan terkini (weight_logs terakhir), kg. `null` bila belum ada.
   final double? bbSekarangKg;
 
+  /// URL foto profil (Cloudinary). `null` bila belum diunggah.
+  final String? fotoUrl;
+
   const KlienProfile({
     required this.id,
     required this.userId,
@@ -42,6 +45,7 @@ class KlienProfile {
     required this.profileComplete,
     this.activeCycle,
     this.bbSekarangKg,
+    this.fotoUrl,
   });
 
   bool get hasPt => ptId != null;
@@ -68,6 +72,7 @@ class KlienProfile {
       activeCycle:
           active is Map ? ProgressCycle.fromJson(Map<String, dynamic>.from(active)) : null,
       bbSekarangKg: (json['bbSekarangKg'] as num?)?.toDouble(),
+      fotoUrl: json['fotoUrl'] as String?,
     );
   }
 }

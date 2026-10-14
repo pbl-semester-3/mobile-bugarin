@@ -207,6 +207,22 @@ void main() {
       expect(profile.bbSekarangKg, 72.5);
     });
 
+    test('getProfile mem-parse fotoUrl', () async {
+      final repo = _repoWith((_) async => _json({
+            'data': {
+              'id': 1,
+              'userId': 10,
+              'nama': 'Maya',
+              'profileComplete': true,
+              'fotoUrl': 'https://res.cloudinary.com/bugarin/foto.jpg',
+              'user': {'email': 'maya@example.com', 'username': 'mayaa'},
+            }
+          }));
+
+      final profile = await repo.getProfile();
+      expect(profile.fotoUrl, 'https://res.cloudinary.com/bugarin/foto.jpg');
+    });
+
     test('mem-parse payload asli GET /klien/profile (fixture verifikasi manual)',
         () async {
       final repo = _repoWith((_) async => _json({
