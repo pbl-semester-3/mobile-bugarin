@@ -82,7 +82,7 @@ class _MainShellState extends ConsumerState<MainShell> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               buildNavItem(index: 0, icon: Icons.home_outlined, label: 'Beranda'),
-              buildNavItem(index: 1, icon: Icons.sports, label: 'PT ku'),
+              buildNavItem(index: 1, icon: Icons.sports, label: 'PTku'),
               buildNavItem(index: 2, icon: Icons.trending_up_rounded, label: 'Progres'),
               buildNavItem(index: 3, icon: Icons.history_rounded, label: 'Riwayat'),
               buildNavItem(index: 4, icon: Icons.chat_bubble_rounded, label: 'Feedback', badgeCount: unreadFeedback),

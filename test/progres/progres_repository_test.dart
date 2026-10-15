@@ -117,6 +117,29 @@ void main() {
       expect(captured!.containsKey('makananId'), isFalse);
     });
 
+    test('estimateMakanan kirim namaMakanan & parse hasil', () async {
+      Map<String, dynamic>? captured;
+      final repo = DioProgresRepository(apiClient: _api((options) async {
+        expect(options.method, 'POST');
+        expect(options.path, '/klien/meal-logs/estimate');
+        captured = Map<String, dynamic>.from(options.data as Map);
+        return jsonResponse({
+          'data': {
+            'makananId': 5,
+            'namaMakanan': 'Nasi Goreng',
+            'kaloriPer100g': 180,
+            'kategori': 'karbohidrat',
+          }
+        });
+      }));
+
+      final est = await repo.estimateMakanan('Nasi Goreng');
+      expect(captured!['namaMakanan'], 'Nasi Goreng');
+      expect(est.makananId, 5);
+      expect(est.kaloriPer100g, 180);
+      expect(est.kategori, 'karbohidrat');
+    });
+
     test('getCurrentWeeklyPlan null bila belum ada plan', () async {
       final repo = DioProgresRepository(apiClient: _api((_) async => jsonResponse({'data': null})));
       expect(await repo.getCurrentWeeklyPlan(), isNull);

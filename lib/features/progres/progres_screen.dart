@@ -26,12 +26,12 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
   final TextEditingController _jarakController = TextEditingController();
 
   MasterOlahraga? _selectedOlahraga;
-  final Map<int, double> _porsi = {};
-  final Set<int> _selectedMealIds = {};
+  final List<_DraftMeal> _draftMeals = [];
   final List<CreatedActivityLog> _submittedActivities = [];
 
   bool _menyimpanAktivitas = false;
   bool _menyimpanMeal = false;
+  bool _mengestimasi = false;
 
   @override
   void dispose() {
@@ -54,17 +54,6 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
           content: Text(pesan),
         ),
       );
-  }
-
-  double _totalKaloriMasuk(List<MasterMakanan> makananList) {
-    double total = 0;
-    for (final id in _selectedMealIds) {
-      final matches = makananList.where((m) => m.id == id);
-      if (matches.isEmpty) continue;
-      final gram = _porsi[id] ?? 100;
-      total += matches.first.kaloriPer100g * (gram / 100);
-    }
-    return total;
   }
 
   int get _totalKaloriTerbakar =>
@@ -112,36 +101,63 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
     }
   }
 
-  Future<void> _submitMeals() async {
+  int get _totalKaloriMasukDraft =>
+      _draftMeals.fold(0, (sum, m) => sum + m.kalori);
+
+  Future<void> _tambahMenu() async {
+    final nama = _customMenuController.text.trim();
+    final gram = double.tryParse(_customGramController.text.trim().replaceAll(',', '.'));
+
+    if (nama.isEmpty) {
+      _toast('Ketik nama menu terlebih dahulu.', error: true);
+      return;
+    }
+    if (gram == null || gram <= 0) {
+      _toast('Porsi (gram) wajib diisi dan lebih dari 0.', error: true);
+      return;
+    }
+
+    setState(() => _mengestimasi = true);
+    try {
+      final est = await ref.read(progresRepositoryProvider).estimateMakanan(nama);
+      final kalori = (est.kaloriPer100g * (gram / 100)).round();
+      if (!mounted) return;
+      setState(() {
+        _draftMeals.add(_DraftMeal(
+          makananId: est.makananId,
+          nama: est.namaMakanan,
+          porsiGram: gram,
+          kalori: kalori,
+        ));
+        _customMenuController.clear();
+        _customGramController.clear();
+      });
+    } catch (e) {
+      _toast(e is ApiException ? e.message : 'Gagal mengestimasi kalori makanan.', error: true);
+    } finally {
+      if (mounted) setState(() => _mengestimasi = false);
+    }
+  }
+
+  Future<void> _simpanMeals() async {
+    if (_draftMeals.isEmpty) {
+      _toast('Belum ada makanan untuk disimpan.', error: true);
+      return;
+    }
+
     final repo = ref.read(progresRepositoryProvider);
-    final namaCustom = _customMenuController.text.trim();
-    final gramCustom = double.tryParse(_customGramController.text.trim().replaceAll(',', '.'));
-
-    if (_selectedMealIds.isEmpty && namaCustom.isEmpty) {
-      _toast('Pilih minimal satu makanan atau isi menu custom.', error: true);
-      return;
-    }
-    if (namaCustom.isNotEmpty && (gramCustom == null || gramCustom <= 0)) {
-      _toast('Porsi menu custom (gram) wajib diisi.', error: true);
-      return;
-    }
-
+    final drafts = List<_DraftMeal>.from(_draftMeals);
     setState(() => _menyimpanMeal = true);
     try {
       int total = 0;
-      for (final id in _selectedMealIds) {
-        final log = await repo.createMealLog(makananId: id, porsiGram: _porsi[id] ?? 100);
-        total += log.kaloriMasuk;
-      }
-      if (namaCustom.isNotEmpty) {
-        final log = await repo.createMealLog(namaMakanan: namaCustom, porsiGram: gramCustom!);
+      for (final m in drafts) {
+        final log = await repo.createMealLog(makananId: m.makananId, porsiGram: m.porsiGram);
         total += log.kaloriMasuk;
       }
       if (!mounted) return;
-      _customMenuController.clear();
-      _customGramController.clear();
+      setState(() => _draftMeals.clear());
       ref.invalidate(dashboardSummaryProvider);
-      _toast('$total kkal tercatat ke backend.');
+      _toast('$total kkal tercatat ke riwayat kalori hari ini.');
     } catch (e) {
       _toast(e is ApiException ? e.message : 'Gagal menyimpan makanan.', error: true);
     } finally {
@@ -149,59 +165,47 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
     }
   }
 
-  void _resetMeals() {
-    setState(() {
-      _selectedMealIds.clear();
+  Future<void> _resetMeals() async {
+    if (_draftMeals.isEmpty) {
       _customMenuController.clear();
       _customGramController.clear();
-    });
-  }
+      return;
+    }
 
-  void _editPorsi(MasterMakanan makanan) {
-    final controller = TextEditingController(text: (_porsi[makanan.id] ?? 100).toStringAsFixed(0));
-    showDialog(
+    final yakin = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: context.card,
+        backgroundColor: ctx.card,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: context.border),
+          side: BorderSide(color: ctx.border),
         ),
-        title: Text('Ubah Porsi ${makanan.nama}',
-            style: TextStyle(color: context.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: TextStyle(color: context.textPrimary, fontSize: 14),
-          decoration: InputDecoration(
-            labelText: 'Porsi (gram)',
-            labelStyle: TextStyle(color: context.textSecondary),
-            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: context.border)),
-            focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFF5C39))),
-          ),
-        ),
+        title: Text('Reset Daftar',
+            style: TextStyle(color: ctx.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Text('Kosongkan semua makanan yang belum disimpan hari ini?',
+            style: TextStyle(color: ctx.textSecondary, fontSize: 13)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: Text('Batal', style: TextStyle(color: context.textSecondary)),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Batal', style: TextStyle(color: ctx.textSecondary)),
           ),
           ElevatedButton(
-            onPressed: () {
-              final val = double.tryParse(controller.text.trim().replaceAll(',', '.'));
-              if (val != null && val > 0) {
-                setState(() => _porsi[makanan.id] = val);
-              }
-              Navigator.pop(ctx);
-            },
+            onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFFF5C39),
               foregroundColor: Colors.white,
             ),
-            child: const Text('Simpan'),
+            child: const Text('Reset'),
           ),
         ],
       ),
     );
+    if (yakin != true || !mounted) return;
+    setState(() {
+      _draftMeals.clear();
+      _customMenuController.clear();
+      _customGramController.clear();
+    });
   }
 
   @override
@@ -218,9 +222,6 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
             err is ApiException ? err.message : 'Gagal memuat data.',
           ),
           data: (data) {
-            for (final m in data.makanan) {
-              _porsi.putIfAbsent(m.id, () => 100);
-            }
             final selected = _selectedOlahraga ??
                 (data.olahraga.isNotEmpty ? data.olahraga.first : null);
 
@@ -262,7 +263,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                   ),
                   const SizedBox(height: 20),
                   if (_isMealTab)
-                    _buildMealSection(data.makanan, plan)
+                    _buildMealSection(plan)
                   else
                     _buildOlahragaSection(data.olahraga, selected, plan),
                 ],
@@ -384,32 +385,39 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
     );
   }
 
-  Widget _buildMealSection(List<MasterMakanan> makananList, WeeklyPlan? plan) {
-    final total = _totalKaloriMasuk(makananList).round();
+  Widget _buildMealSection(WeeklyPlan? plan) {
+    final total = _totalKaloriMasukDraft;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildWeeklyPlanCard(plan, meal: true),
         const SizedBox(height: 22),
-        Text('Preset Makanan',
+        Text('Makanan Hari Ini',
             style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        if (makananList.isEmpty)
-          Text('Master makanan kosong.', style: TextStyle(color: context.textSecondary, fontSize: 12))
+        if (_draftMeals.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+            decoration: BoxDecoration(
+              color: context.card,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: context.border),
+            ),
+            child: Text('Belum ada makanan ditambahkan hari ini.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: context.textSecondary, fontSize: 12)),
+          )
         else
-          ...makananList.take(8).map((m) {
-            final selected = _selectedMealIds.contains(m.id);
-            final gram = _porsi[m.id] ?? 100;
-            final kalori = (m.kaloriPer100g * (gram / 100)).round();
+          ...List.generate(_draftMeals.length, (i) {
+            final m = _draftMeals[i];
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: context.card,
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: selected ? const Color(0xFFFF5C39).withValues(alpha: 0.4) : context.border,
-                ),
+                border: Border.all(color: context.border),
               ),
               child: Row(
                 children: [
@@ -418,47 +426,39 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(m.nama,
-                            style: TextStyle(color: context.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
+                            style: TextStyle(
+                                color: context.textPrimary, fontWeight: FontWeight.bold, fontSize: 13),
                             overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 3),
-                        Text('$kalori kkal (${m.kaloriPer100g.toStringAsFixed(0)} kkal/100g)',
+                        Text('${m.kalori} kkal',
                             style: TextStyle(color: context.textSecondary, fontSize: 11)),
                       ],
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => _editPorsi(m),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: context.surfaceInner,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: context.border),
-                      ),
-                      child: Text('${gram.toStringAsFixed(0)} g',
-                          style: TextStyle(color: context.textPrimary, fontSize: 12, fontWeight: FontWeight.bold)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: context.surfaceInner,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: context.border),
                     ),
+                    child: Text('${m.porsiGram.toStringAsFixed(0)} gr',
+                        style: TextStyle(
+                            color: context.textPrimary, fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(width: 10),
                   GestureDetector(
-                    onTap: () => setState(() {
-                      if (selected) {
-                        _selectedMealIds.remove(m.id);
-                      } else {
-                        _selectedMealIds.add(m.id);
-                      }
-                    }),
+                    onTap: () => setState(() => _draftMeals.removeAt(i)),
                     child: Container(
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color: selected ? const Color(0xFFFF5C39) : context.surfaceInner,
+                        color: context.surfaceInner,
                         shape: BoxShape.circle,
-                        border: Border.all(color: selected ? Colors.transparent : context.border),
+                        border: Border.all(color: context.border),
                       ),
                       child: Center(
-                        child: Icon(Icons.check_rounded,
-                            size: 18, color: selected ? Colors.white : context.textMuted),
+                        child: Icon(Icons.remove_rounded, size: 18, color: context.textMuted),
                       ),
                     ),
                   ),
@@ -467,7 +467,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
             );
           }),
         const SizedBox(height: 20),
-        Text('Tambah Menu Khusus (Custom Entry)',
+        Text('Tambahkan Menu',
             style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         Text('Jika makanan belum terdaftar, sistem mengestimasi kalori via AI.',
@@ -486,6 +486,27 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                 controller: _customGramController,
                 hint: 'Porsi (g)',
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: _mengestimasi ? null : _tambahMenu,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF5C39),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: EdgeInsets.zero,
+                  shape: const CircleBorder(),
+                ),
+                child: _mengestimasi
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.add_rounded, size: 24),
               ),
             ),
           ],
@@ -542,7 +563,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                     child: SizedBox(
                       height: 44,
                       child: ElevatedButton(
-                        onPressed: _menyimpanMeal ? null : _submitMeals,
+                        onPressed: _menyimpanMeal ? null : _simpanMeals,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFF5C39),
                           foregroundColor: Colors.white,
@@ -718,4 +739,19 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
       ),
     );
   }
+}
+
+/// Item makanan yang belum disimpan (staging) di tab Meal.
+class _DraftMeal {
+  final int makananId;
+  final String nama;
+  final double porsiGram;
+  final int kalori;
+
+  const _DraftMeal({
+    required this.makananId,
+    required this.nama,
+    required this.porsiGram,
+    required this.kalori,
+  });
 }

@@ -146,3 +146,25 @@ class CreatedMealLog {
         tanggal: json['tanggal'] as String? ?? '',
       );
 }
+
+/// Respons `POST /klien/meal-logs/estimate` (estimasi kalori tanpa menyimpan).
+class EstimateMakanan {
+  final int makananId;
+  final String namaMakanan;
+  final double kaloriPer100g;
+  final String kategori;
+
+  const EstimateMakanan({
+    required this.makananId,
+    required this.namaMakanan,
+    required this.kaloriPer100g,
+    required this.kategori,
+  });
+
+  factory EstimateMakanan.fromJson(Map<String, dynamic> json) => EstimateMakanan(
+        makananId: (json['makananId'] as num?)?.toInt() ?? 0,
+        namaMakanan: json['namaMakanan'] as String? ?? '',
+        kaloriPer100g: (json['kaloriPer100g'] as num?)?.toDouble() ?? 0,
+        kategori: json['kategori'] as String? ?? '',
+      );
+}

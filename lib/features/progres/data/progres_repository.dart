@@ -19,6 +19,9 @@ abstract interface class ProgresRepository {
     required double porsiGram,
   });
 
+  /// Estimasi kalori makanan tanpa menyimpan (dipakai saat menambah draft menu).
+  Future<EstimateMakanan> estimateMakanan(String namaMakanan);
+
   Future<WeeklyPlan?> getCurrentWeeklyPlan();
 }
 
@@ -66,6 +69,22 @@ class DioProgresRepository implements ProgresRepository {
         throw const ApiException('Respons log makan tidak valid.');
       }
       return CreatedMealLog.fromJson(Map<String, dynamic>.from(data));
+    } on DioException catch (e) {
+      throw mapDioException(e);
+    }
+  }
+
+  @override
+  Future<EstimateMakanan> estimateMakanan(String namaMakanan) async {
+    try {
+      final response = await apiClient.dio.post('/klien/meal-logs/estimate', data: {
+        'namaMakanan': namaMakanan,
+      });
+      final data = response.data is Map ? (response.data as Map)['data'] : null;
+      if (data is! Map) {
+        throw const ApiException('Respons estimasi makanan tidak valid.');
+      }
+      return EstimateMakanan.fromJson(Map<String, dynamic>.from(data));
     } on DioException catch (e) {
       throw mapDioException(e);
     }

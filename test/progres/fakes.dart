@@ -103,4 +103,8 @@ class FakeProgresRepository implements ProgresRepository {
     required double porsiGram,
   }) =>
       throw UnimplementedError();
+
+  @override
+  Future<EstimateMakanan> estimateMakanan(String namaMakanan) =>
+      throw UnimplementedError();
 }
