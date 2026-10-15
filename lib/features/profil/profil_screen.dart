@@ -616,16 +616,14 @@ class _ProfilScreenState extends ConsumerState<ProfilScreen> {
                   height: 48,
                   child: OutlinedButton.icon(
                     onPressed: _logout,
-                    icon: const Icon(Icons.logout_rounded, color: _merah, size: 18),
+                    icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 18),
                     label: const Text(
                       'Keluar dari Akun',
-                      style: TextStyle(color: _merah, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                        color: isDark ? const Color(0xFF2E1717) : const Color(0xFFFFCDD2),
-                      ),
-                      backgroundColor: isDark ? const Color(0xFF1A0F0F) : const Color(0xFFFFEBEE),
+                      backgroundColor: _oranye,
+                      side: BorderSide(color: _oranye.withValues(alpha: 0.45)),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                   ),
