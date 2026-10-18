@@ -20,12 +20,6 @@ class FakeTokenStorage extends TokenStorage {
     savedToken = null;
     cleared = true;
   }
-
-  @override
-  Future<bool> getHasSeenWelcome() async => false;
-
-  @override
-  Future<void> setHasSeenWelcome() async {}
 }
 
 /// Fake repository auth untuk menguji notifier tanpa network.

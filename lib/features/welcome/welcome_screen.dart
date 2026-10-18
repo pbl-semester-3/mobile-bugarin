@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../providers/has_seen_welcome_provider.dart';
-import '../../services/token_storage.dart';
+import '../../services/settings_store.dart';
 import '../auth/login_screen.dart';
 
 class WelcomeScreen extends ConsumerStatefulWidget {
@@ -63,7 +63,7 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProvid
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(hasSeenWelcomeProvider.notifier).state = true;
-      TokenStorage().setHasSeenWelcome();
+      SettingsStore.instance.setHasSeenWelcome();
     });
   }
 

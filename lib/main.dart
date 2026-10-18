@@ -3,12 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/theme_provider.dart';
 import 'providers/has_seen_welcome_provider.dart';
 import 'router/app_router.dart';
-import 'services/token_storage.dart';
+import 'services/settings_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final hasSeenWelcome = await TokenStorage().getHasSeenWelcome();
+  // Inisialisasi setting (shared_preferences) + migrasi nilai lama dari
+  // flutter_secure_storage (sekali jalan).
+  final settings = await SettingsStore.init();
+  final hasSeenWelcome = settings.getHasSeenWelcome();
 
   runApp(
     ProviderScope(

@@ -1,38 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+import '../../services/settings_store.dart';
 
 final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(() {
   return ThemeModeNotifier();
 });
 
 class ThemeModeNotifier extends Notifier<ThemeMode> {
-  static const _storage = FlutterSecureStorage();
-  static const _themeKey = 'app_theme_mode';
-
   @override
   ThemeMode build() {
-    _loadTheme();
-    return ThemeMode.dark;
-  }
-
-  Future<void> _loadTheme() async {
-    final saved = await _storage.read(key: _themeKey);
-    if (saved == 'light') {
-      state = ThemeMode.light;
-    } else {
-      state = ThemeMode.dark;
-    }
+    final saved = SettingsStore.instance.getThemeMode();
+    return saved == 'light' ? ThemeMode.light : ThemeMode.dark;
   }
 
   Future<void> setLight() async {
     state = ThemeMode.light;
-    await _storage.write(key: _themeKey, value: 'light');
+    await SettingsStore.instance.setThemeMode('light');
   }
 
   Future<void> setDark() async {
     state = ThemeMode.dark;
-    await _storage.write(key: _themeKey, value: 'dark');
+    await SettingsStore.instance.setThemeMode('dark');
   }
 }
 
