@@ -392,7 +392,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
       children: [
         _buildWeeklyPlanCard(plan, meal: true),
         const SizedBox(height: 22),
-        Text('Makanan Hari Ini',
+        Text('Meal Hari Ini',
             style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         if (_draftMeals.isEmpty)
@@ -467,7 +467,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
             );
           }),
         const SizedBox(height: 20),
-        Text('Tambahkan Menu',
+        Text('Catat Meal',
             style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
         const SizedBox(height: 6),
         Text('Jika makanan belum terdaftar, sistem mengestimasi kalori via AI.',
@@ -484,8 +484,9 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
               flex: 2,
               child: _inputBox(
                 controller: _customGramController,
-                hint: 'Porsi (g)',
+                hint: 'Porsi',
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                suffixText: 'gram',
               ),
             ),
             const SizedBox(width: 8),
