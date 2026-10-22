@@ -625,13 +625,19 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        _inputBox(controller: _durasiController, hint: 'Durasi Latihan (menit)', keyboardType: TextInputType.number),
+        _inputBox(
+          controller: _durasiController,
+          hint: 'Durasi Latihan',
+          keyboardType: TextInputType.number,
+          suffixText: 'menit',
+        ),
         if (selected != null && selected.butuhJarak) ...[
           const SizedBox(height: 12),
           _inputBox(
             controller: _jarakController,
-            hint: 'Jarak Tempuh (meter) *Wajib',
+            hint: 'Jarak Tempuh',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            suffixText: 'meter',
           ),
         ],
         const SizedBox(height: 14),
@@ -718,7 +724,20 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
     required TextEditingController controller,
     required String hint,
     TextInputType keyboardType = TextInputType.text,
+    String? suffixText,
   }) {
+    final field = TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      style: TextStyle(color: context.textPrimary, fontSize: 13),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: context.textMuted, fontSize: 12),
+        border: InputBorder.none,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      ),
+    );
+
     return Container(
       height: 48,
       decoration: BoxDecoration(
@@ -726,17 +745,24 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: context.border),
       ),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        style: TextStyle(color: context.textPrimary, fontSize: 13),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: context.textMuted, fontSize: 12),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        ),
-      ),
+      child: suffixText == null
+          ? field
+          : Row(
+              children: [
+                Expanded(child: field),
+                Padding(
+                  padding: const EdgeInsets.only(right: 14),
+                  child: Text(
+                    suffixText,
+                    style: TextStyle(
+                      color: context.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
