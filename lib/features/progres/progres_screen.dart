@@ -24,6 +24,10 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
   final TextEditingController _customGramController = TextEditingController();
   final TextEditingController _durasiController = TextEditingController();
   final TextEditingController _jarakController = TextEditingController();
+  final TextEditingController _beratBebanController = TextEditingController();
+  final TextEditingController _setController = TextEditingController();
+  final TextEditingController _repetisiController = TextEditingController();
+  final TextEditingController _istirahatController = TextEditingController();
 
   MasterOlahraga? _selectedOlahraga;
   final List<_DraftMeal> _draftMeals = [];
@@ -34,12 +38,36 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
   bool _mengestimasi = false;
 
   @override
+  void initState() {
+    super.initState();
+    _muatRiwayatHariIni();
+  }
+
+  @override
   void dispose() {
     _customMenuController.dispose();
     _customGramController.dispose();
     _durasiController.dispose();
     _jarakController.dispose();
+    _beratBebanController.dispose();
+    _setController.dispose();
+    _repetisiController.dispose();
+    _istirahatController.dispose();
     super.dispose();
+  }
+
+  Future<void> _muatRiwayatHariIni() async {
+    try {
+      final list = await ref.read(progresRepositoryProvider).getActivityLogs();
+      if (!mounted) return;
+      setState(() {
+        _submittedActivities
+          ..clear()
+          ..addAll(list);
+      });
+    } catch (_) {
+      // Gagal memuat riwayat (mis. offline) — biarkan kosong, tidak mengganggu.
+    }
   }
 
   void _toast(String pesan, {bool error = false}) {
@@ -59,23 +87,69 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
   int get _totalKaloriTerbakar =>
       _submittedActivities.fold(0, (sum, a) => sum + a.kaloriTerbakar);
 
+  String _detailAktivitas(CreatedActivityLog act) {
+    final bagian = <String>['${act.durasiMenit} menit'];
+    if (act.beratBebanKg != null && act.repetisi != null && act.jumlahSet != null) {
+      final berat = act.beratBebanKg!;
+      final beratTeks = berat % 1 == 0 ? berat.toStringAsFixed(0) : berat.toStringAsFixed(1);
+      bagian.add('$beratTeks kg × ${act.repetisi} rep × ${act.jumlahSet} set');
+      if (act.waktuIstirahatDetik != null) {
+        bagian.add('jeda ${act.waktuIstirahatDetik} dtk');
+      }
+    } else if (act.jarakMeter != null) {
+      bagian.add('${act.jarakMeter!.toStringAsFixed(0)} meter');
+    }
+    return bagian.join(' • ');
+  }
+
   Future<void> _submitActivity(MasterOlahraga? olahraga) async {
     if (olahraga == null) {
       _toast('Pilih jenis olahraga dulu.', error: true);
       return;
     }
-    final durasi = int.tryParse(_durasiController.text.trim());
-    if (durasi == null || durasi <= 0) {
-      _toast('Durasi olahraga (menit) wajib diisi.', error: true);
-      return;
-    }
 
+    int? durasi;
     double? jarak;
-    if (olahraga.butuhJarak) {
-      jarak = double.tryParse(_jarakController.text.trim().replaceAll(',', '.'));
-      if (jarak == null || jarak <= 0) {
-        _toast('Olahraga ini mewajibkan input jarak (meter).', error: true);
+    double? beratBeban;
+    int? jumlahSet;
+    int? repetisi;
+    int? istirahat;
+
+    if (olahraga.butuhBeban) {
+      beratBeban = double.tryParse(_beratBebanController.text.trim().replaceAll(',', '.'));
+      jumlahSet = int.tryParse(_setController.text.trim());
+      repetisi = int.tryParse(_repetisiController.text.trim());
+      istirahat = int.tryParse(_istirahatController.text.trim());
+
+      if (beratBeban == null || beratBeban <= 0) {
+        _toast('Berat beban (kg) wajib diisi.', error: true);
         return;
+      }
+      if (jumlahSet == null || jumlahSet <= 0) {
+        _toast('Jumlah set wajib diisi.', error: true);
+        return;
+      }
+      if (repetisi == null || repetisi <= 0) {
+        _toast('Repetisi wajib diisi.', error: true);
+        return;
+      }
+      if (istirahat == null || istirahat <= 0) {
+        _toast('Jeda istirahat (detik) wajib diisi dan lebih dari 0.', error: true);
+        return;
+      }
+    } else {
+      durasi = int.tryParse(_durasiController.text.trim());
+      if (durasi == null || durasi <= 0) {
+        _toast('Durasi olahraga (menit) wajib diisi.', error: true);
+        return;
+      }
+
+      if (olahraga.butuhJarak) {
+        jarak = double.tryParse(_jarakController.text.trim().replaceAll(',', '.'));
+        if (jarak == null || jarak <= 0) {
+          _toast('Olahraga ini mewajibkan input jarak (meter).', error: true);
+          return;
+        }
       }
     }
 
@@ -85,12 +159,20 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
             olahragaId: olahraga.id,
             durasiMenit: durasi,
             jarakMeter: jarak,
+            beratBebanKg: beratBeban,
+            jumlahSet: jumlahSet,
+            repetisi: repetisi,
+            waktuIstirahatDetik: istirahat,
           );
       if (!mounted) return;
       setState(() {
         _submittedActivities.insert(0, log);
         _durasiController.clear();
         _jarakController.clear();
+        _beratBebanController.clear();
+        _setController.clear();
+        _repetisiController.clear();
+        _istirahatController.clear();
       });
       ref.invalidate(dashboardSummaryProvider);
       _toast('Aktivitas tersimpan. Terbakar ${log.kaloriTerbakar} kkal.');
@@ -626,20 +708,56 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        _inputBox(
-          controller: _durasiController,
-          hint: 'Durasi Latihan',
-          keyboardType: TextInputType.number,
-          suffixText: 'menit',
-        ),
-        if (selected != null && selected.butuhJarak) ...[
+        if (selected?.butuhBeban == true) ...[
+          _inputBox(
+            controller: _beratBebanController,
+            hint: 'Berat Beban',
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            suffixText: 'Kg',
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _inputBox(
+                  controller: _repetisiController,
+                  hint: 'Repetisi',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _inputBox(
+                  controller: _setController,
+                  hint: 'Set',
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           _inputBox(
-            controller: _jarakController,
-            hint: 'Jarak Tempuh',
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            suffixText: 'meter',
+            controller: _istirahatController,
+            hint: 'Jeda Istirahat',
+            keyboardType: TextInputType.number,
+            suffixText: 'detik',
           ),
+        ] else ...[
+          _inputBox(
+            controller: _durasiController,
+            hint: 'Durasi Latihan',
+            keyboardType: TextInputType.number,
+            suffixText: 'menit',
+          ),
+          if (selected != null && selected.butuhJarak) ...[
+            const SizedBox(height: 12),
+            _inputBox(
+              controller: _jarakController,
+              hint: 'Jarak Tempuh',
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              suffixText: 'meter',
+            ),
+          ],
         ],
         const SizedBox(height: 14),
         SizedBox(
@@ -695,9 +813,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                             style: TextStyle(color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
                         Text(
-                          act.jarakMeter != null
-                              ? '${act.durasiMenit} menit • ${act.jarakMeter!.toStringAsFixed(0)} meter'
-                              : '${act.durasiMenit} menit',
+                          _detailAktivitas(act),
                           style: TextStyle(color: context.textSecondary, fontSize: 11),
                         ),
                       ],

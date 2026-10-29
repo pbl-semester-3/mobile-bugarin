@@ -27,6 +27,7 @@ class DriftCacheRepository implements CacheRepository {
                 nama: o.nama,
                 metValue: o.metValue,
                 butuhJarak: o.butuhJarak,
+                butuhBeban: o.butuhBeban,
               )),
         ),
       );
@@ -43,6 +44,7 @@ class DriftCacheRepository implements CacheRepository {
               metValue: r.metValue,
               kategori: '',
               butuhJarak: r.butuhJarak,
+              butuhBeban: r.butuhBeban,
             ))
         .toList();
   }

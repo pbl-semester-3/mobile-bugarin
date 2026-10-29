@@ -88,6 +88,79 @@ void main() {
       expect(captured!['jarakMeter'], 5000);
     });
 
+    test('createActivityLog beban mengirim berat/set/repetisi/jeda', () async {
+      Map<String, dynamic>? captured;
+      final repo = DioProgresRepository(apiClient: _api((options) async {
+        captured = Map<String, dynamic>.from(options.data as Map);
+        return jsonResponse({
+          'data': {
+            'id': 11,
+            'olahragaId': 5,
+            'durasiMenit': 12,
+            'jarakMeter': null,
+            'beratBebanKg': 60,
+            'jumlahSet': 3,
+            'repetisi': 10,
+            'waktuIstirahatDetik': 90,
+            'kaloriTerbakar': 180,
+            'tanggal': '2026-10-16',
+          }
+        });
+      }));
+
+      final log = await repo.createActivityLog(
+        olahragaId: 5,
+        beratBebanKg: 60,
+        jumlahSet: 3,
+        repetisi: 10,
+        waktuIstirahatDetik: 90,
+      );
+
+      expect(captured!['beratBebanKg'], 60);
+      expect(captured!['jumlahSet'], 3);
+      expect(captured!['repetisi'], 10);
+      expect(captured!['waktuIstirahatDetik'], 90);
+      expect(captured!.containsKey('durasiMenit'), isFalse);
+      expect(log.beratBebanKg, 60);
+      expect(log.waktuIstirahatDetik, 90);
+    });
+
+    test('getActivityLogs parse list riwayat', () async {
+      final repo = DioProgresRepository(apiClient: _api((options) async {
+        expect(options.method, 'GET');
+        expect(options.path, '/klien/activity-logs');
+        return jsonResponse({
+          'data': [
+            {
+              'id': 1,
+              'olahragaId': 5,
+              'durasiMenit': 12,
+              'beratBebanKg': 60,
+              'jumlahSet': 3,
+              'repetisi': 10,
+              'waktuIstirahatDetik': 90,
+              'kaloriTerbakar': 180,
+              'tanggal': '2026-10-16',
+            },
+            {
+              'id': 2,
+              'olahragaId': 1,
+              'durasiMenit': 30,
+              'jarakMeter': 5000,
+              'kaloriTerbakar': 200,
+              'tanggal': '2026-10-16',
+            },
+          ]
+        });
+      }));
+
+      final list = await repo.getActivityLogs();
+      expect(list.length, 2);
+      expect(list.first.beratBebanKg, 60);
+      expect(list.first.jumlahSet, 3);
+      expect(list[1].jarakMeter, 5000);
+    });
+
     test('createMealLog preset kirim makananId', () async {
       Map<String, dynamic>? captured;
       final repo = DioProgresRepository(apiClient: _api((options) async {
