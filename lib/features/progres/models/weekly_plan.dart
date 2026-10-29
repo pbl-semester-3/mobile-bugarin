@@ -97,6 +97,10 @@ class CreatedActivityLog {
   final int olahragaId;
   final int durasiMenit;
   final double? jarakMeter;
+  final double? beratBebanKg;
+  final int? jumlahSet;
+  final int? repetisi;
+  final int? waktuIstirahatDetik;
   final int kaloriTerbakar;
   final String tanggal;
 
@@ -107,6 +111,10 @@ class CreatedActivityLog {
     required this.jarakMeter,
     required this.kaloriTerbakar,
     required this.tanggal,
+    this.beratBebanKg,
+    this.jumlahSet,
+    this.repetisi,
+    this.waktuIstirahatDetik,
   });
 
   factory CreatedActivityLog.fromJson(Map<String, dynamic> json) => CreatedActivityLog(
@@ -114,6 +122,10 @@ class CreatedActivityLog {
         olahragaId: (json['olahragaId'] as num?)?.toInt() ?? 0,
         durasiMenit: (json['durasiMenit'] as num?)?.toInt() ?? 0,
         jarakMeter: (json['jarakMeter'] as num?)?.toDouble(),
+        beratBebanKg: (json['beratBebanKg'] as num?)?.toDouble(),
+        jumlahSet: (json['jumlahSet'] as num?)?.toInt(),
+        repetisi: (json['repetisi'] as num?)?.toInt(),
+        waktuIstirahatDetik: (json['waktuIstirahatDetik'] as num?)?.toInt(),
         kaloriTerbakar: (json['kaloriTerbakar'] as num?)?.toInt() ?? 0,
         tanggal: json['tanggal'] as String? ?? '',
       );

@@ -91,10 +91,20 @@ class FakeProgresRepository implements ProgresRepository {
   @override
   Future<CreatedActivityLog> createActivityLog({
     required int olahragaId,
-    required int durasiMenit,
+    int? durasiMenit,
     double? jarakMeter,
+    double? beratBebanKg,
+    int? jumlahSet,
+    int? repetisi,
+    int? waktuIstirahatDetik,
   }) =>
       throw UnimplementedError();
+
+  @override
+  Future<List<CreatedActivityLog>> getActivityLogs({String? tanggal}) async {
+    if (error != null) throw error!;
+    return const [];
+  }
 
   @override
   Future<CreatedMealLog> createMealLog({

@@ -11,6 +11,7 @@ class MasterOlahragaCache extends Table {
   TextColumn get nama => text()();
   RealColumn get metValue => real().named('met_value')();
   BoolColumn get butuhJarak => boolean().named('butuh_jarak')();
+  BoolColumn get butuhBeban => boolean().named('butuh_beban')();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -52,7 +53,7 @@ class LocalDatabase extends _$LocalDatabase {
   LocalDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -60,6 +61,9 @@ class LocalDatabase extends _$LocalDatabase {
         onUpgrade: (m, from, to) async {
           if (from < 2) {
             await m.createTable(dashboardSummaryCache);
+          }
+          if (from < 3) {
+            await m.addColumn(masterOlahragaCache, masterOlahragaCache.butuhBeban);
           }
         },
       );

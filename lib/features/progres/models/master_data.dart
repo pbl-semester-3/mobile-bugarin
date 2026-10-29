@@ -5,6 +5,7 @@ class MasterOlahraga {
   final double metValue;
   final String kategori;
   final bool butuhJarak;
+  final bool butuhBeban;
 
   const MasterOlahraga({
     required this.id,
@@ -12,6 +13,7 @@ class MasterOlahraga {
     required this.metValue,
     required this.kategori,
     required this.butuhJarak,
+    this.butuhBeban = false,
   });
 
   factory MasterOlahraga.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class MasterOlahraga {
       metValue: (json['metValue'] as num?)?.toDouble() ?? 0,
       kategori: json['kategori'] as String? ?? '',
       butuhJarak: json['butuhJarak'] as bool? ?? false,
+      butuhBeban: json['butuhBeban'] as bool? ?? false,
     );
   }
 }
