@@ -4,12 +4,14 @@ class PtRecommendation {
   final String nama;
   final String spesialisasi; // 'turun_bb' | 'naik_bb'
   final String tempatGym;
+  final String? fotoUrl;
 
   const PtRecommendation({
     required this.id,
     required this.nama,
     required this.spesialisasi,
     required this.tempatGym,
+    this.fotoUrl,
   });
 
   factory PtRecommendation.fromJson(Map<String, dynamic> json) {
@@ -18,6 +20,7 @@ class PtRecommendation {
       nama: json['nama'] as String? ?? '',
       spesialisasi: json['spesialisasi'] as String? ?? '',
       tempatGym: json['tempatGym'] as String? ?? '',
+      fotoUrl: json['fotoUrl'] as String?,
     );
   }
 }
@@ -27,12 +30,14 @@ class PairingPt {
   final String nama;
   final String spesialisasi;
   final String? tempatGym;
+  final String? fotoUrl;
 
   const PairingPt({
     required this.id,
     required this.nama,
     required this.spesialisasi,
     this.tempatGym,
+    this.fotoUrl,
   });
 
   factory PairingPt.fromJson(Map<String, dynamic> json) {
@@ -41,6 +46,7 @@ class PairingPt {
       nama: json['nama'] as String? ?? '',
       spesialisasi: json['spesialisasi'] as String? ?? '',
       tempatGym: json['tempatGym'] as String?,
+      fotoUrl: json['fotoUrl'] as String?,
     );
   }
 }

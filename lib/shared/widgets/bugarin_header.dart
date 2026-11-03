@@ -158,27 +158,11 @@ class BugarinHeader extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
             ],
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: context.card,
-                border: Border.all(
-                  color: const Color(0xFFFF5C39),
-                  width: 1.5,
-                ),
-              ),
-              child: const Center(
-                child: Text(
-                  'B',
-                  style: TextStyle(
-                    color: Color(0xFFFF5C39),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
+            Image.asset(
+              'assets/images/bugarin-logo.png',
+              width: 40,
+              height: 40,
+              fit: BoxFit.contain,
             ),
             const SizedBox(width: 10),
             Column(

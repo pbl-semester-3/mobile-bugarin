@@ -24,7 +24,12 @@ void main() {
         expect(options.path, '/klien/dashboard-summary');
         return jsonResponse({
           'data': {
-            'pt': {'id': 3, 'nama': 'Sarah', 'spesialisasi': 'turun_bb'},
+            'pt': {
+              'id': 3,
+              'nama': 'Sarah',
+              'spesialisasi': 'turun_bb',
+              'fotoUrl': 'https://cdn.test/sarah.jpg',
+            },
             'targetKaloriHariIni': 1662,
             'kaloriMasukHariIni': 1230,
             'streak': 5,
@@ -41,6 +46,7 @@ void main() {
 
       expect(s.pt?.nama, 'Sarah');
       expect(s.pt?.spesialisasi, 'turun_bb');
+      expect(s.pt?.fotoUrl, 'https://cdn.test/sarah.jpg');
       expect(s.targetKaloriHariIni, 1662);
       expect(s.kaloriMasukHariIni, 1230);
       expect(s.streak, 5);

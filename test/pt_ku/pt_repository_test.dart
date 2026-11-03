@@ -23,7 +23,7 @@ void main() {
         expect(options.path, '/pt/recommendations');
         return jsonResponse({
           'data': [
-            {'id': 3, 'nama': 'Sarah', 'spesialisasi': 'turun_bb', 'tempatGym': 'FitZone'},
+            {'id': 3, 'nama': 'Sarah', 'spesialisasi': 'turun_bb', 'tempatGym': 'FitZone', 'fotoUrl': 'https://cdn.test/sarah.jpg'},
           ],
           'meta': {'total': 1},
         });
@@ -32,6 +32,7 @@ void main() {
       final list = await repo.getRecommendations();
       expect(list.single.nama, 'Sarah');
       expect(list.single.tempatGym, 'FitZone');
+      expect(list.single.fotoUrl, 'https://cdn.test/sarah.jpg');
     });
 
     test('sendPairingRequest mengirim ptId', () async {
@@ -62,13 +63,14 @@ void main() {
               'status': 'pending',
               'alasanPenolakan': null,
               'createdAt': '2026-10-04T05:00:00.000Z',
-              'pt': {'id': 3, 'nama': 'Sarah', 'spesialisasi': 'turun_bb', 'tempatGym': 'FitZone'},
+              'pt': {'id': 3, 'nama': 'Sarah', 'spesialisasi': 'turun_bb', 'tempatGym': 'FitZone', 'fotoUrl': 'https://cdn.test/sarah.jpg'},
             }
           }));
 
       final req = await repo.getCurrentRequest();
       expect(req!.isPending, isTrue);
       expect(req.pt?.nama, 'Sarah');
+      expect(req.pt?.fotoUrl, 'https://cdn.test/sarah.jpg');
       expect(req.alasanPenolakan, isNull);
     });
 

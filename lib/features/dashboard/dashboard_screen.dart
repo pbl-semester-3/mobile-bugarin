@@ -422,13 +422,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 shape: BoxShape.circle,
                 color: context.surfaceInner,
                 border: Border.all(color: const Color(0xFFFF5C39), width: 1.8),
+                image: pt.fotoUrl != null
+                    ? DecorationImage(image: NetworkImage(pt.fotoUrl!), fit: BoxFit.cover)
+                    : null,
               ),
-              child: Center(
-                child: Text(
-                  pt.nama.trim().isEmpty ? '?' : pt.nama.trim()[0].toUpperCase(),
-                  style: const TextStyle(color: Color(0xFFFF5C39), fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-              ),
+              child: pt.fotoUrl == null
+                  ? Center(
+                      child: Text(
+                        pt.nama.trim().isEmpty ? '?' : pt.nama.trim()[0].toUpperCase(),
+                        style: const TextStyle(color: Color(0xFFFF5C39), fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 14),
             Expanded(

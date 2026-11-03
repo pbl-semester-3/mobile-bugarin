@@ -34,14 +34,21 @@ class PtSummary {
   final int id;
   final String nama;
   final String? spesialisasi;
+  final String? fotoUrl;
 
-  const PtSummary({required this.id, required this.nama, this.spesialisasi});
+  const PtSummary({
+    required this.id,
+    required this.nama,
+    this.spesialisasi,
+    this.fotoUrl,
+  });
 
   factory PtSummary.fromJson(Map<String, dynamic> json) {
     return PtSummary(
       id: (json['id'] as num?)?.toInt() ?? 0,
       nama: json['nama'] as String? ?? '',
       spesialisasi: json['spesialisasi'] as String?,
+      fotoUrl: json['fotoUrl'] as String?,
     );
   }
 
@@ -49,6 +56,7 @@ class PtSummary {
         'id': id,
         'nama': nama,
         'spesialisasi': spesialisasi,
+        'fotoUrl': fotoUrl,
       };
 }
 

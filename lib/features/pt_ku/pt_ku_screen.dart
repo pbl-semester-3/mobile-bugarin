@@ -127,7 +127,7 @@ class _PtKuScreenState extends ConsumerState<PtKuScreen> {
                   ),
                 ),
               ),
-              _Avatar(nama: pt.nama, size: 80),
+              _Avatar(nama: pt.nama, size: 80, fotoUrl: pt.fotoUrl),
               const SizedBox(height: 16),
               Text('Coach ${pt.nama}',
                   style: const TextStyle(color: _accent, fontSize: 16, fontWeight: FontWeight.bold)),
@@ -330,7 +330,7 @@ class _PtKuScreenState extends ConsumerState<PtKuScreen> {
       ),
       child: Row(
         children: [
-          _Avatar(nama: trainer.nama, size: 48),
+          _Avatar(nama: trainer.nama, size: 48, fotoUrl: trainer.fotoUrl),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -517,8 +517,9 @@ String _labelSpesialisasi(String spesialisasi) {
 class _Avatar extends StatelessWidget {
   final String nama;
   final double size;
+  final String? fotoUrl;
 
-  const _Avatar({required this.nama, required this.size});
+  const _Avatar({required this.nama, required this.size, this.fotoUrl});
 
   @override
   Widget build(BuildContext context) {
@@ -530,17 +531,22 @@ class _Avatar extends StatelessWidget {
         shape: BoxShape.circle,
         color: context.surfaceInner,
         border: Border.all(color: _accent, width: 1.5),
+        image: fotoUrl != null
+            ? DecorationImage(image: NetworkImage(fotoUrl!), fit: BoxFit.cover)
+            : null,
       ),
-      child: Center(
-        child: Text(
-          inisial,
-          style: TextStyle(
-            color: _accent,
-            fontSize: size * 0.4,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      child: fotoUrl == null
+          ? Center(
+              child: Text(
+                inisial,
+                style: TextStyle(
+                  color: _accent,
+                  fontSize: size * 0.4,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            )
+          : null,
     );
   }
 }
