@@ -91,17 +91,11 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProvid
         child: !_isBgLoaded
             ? Center(
                 key: const ValueKey('splash_loading'),
-                child: Container(
-                  width: 86,
-                  height: 86,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: context.card,
-                    border: Border.all(color: context.border, width: 2),
-                  ),
-                  child: const Center(
-                    child: Text('B', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFFFF5C39))),
-                  ),
+                child: Image.asset(
+                  'assets/images/bugarin-logo.png',
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.contain,
                 ),
               )
             : GestureDetector(
@@ -160,37 +154,13 @@ class _WelcomeScreenState extends ConsumerState<WelcomeScreen> with TickerProvid
                         child: Column(
                           children: [
                             const Spacer(flex: 3),
-                            // Logo B
+                            // Logo Bugarin
                             Center(
-                              child: Container(
-                                width: 84,
-                                height: 84,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: context.card,
-                                  border: Border.all(color: context.border, width: 2),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: isDark ? Colors.black45 : const Color(0xFFE2E8E5),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 8),
-                                    ),
-                                  ],
-                                ),
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    Container(
-                                      width: 66,
-                                      height: 66,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(color: const Color(0xFFFF5C39).withValues(alpha: 0.4), width: 1.5),
-                                      ),
-                                    ),
-                                    const Text('B', style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900, color: Color(0xFFFF5C39))),
-                                  ],
-                                ),
+                              child: Image.asset(
+                                'assets/images/bugarin-logo.png',
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.contain,
                               ),
                             ),
                             const SizedBox(height: 26),
