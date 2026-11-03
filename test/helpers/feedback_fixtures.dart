@@ -16,6 +16,6 @@ const List<Map<String, dynamic>> feedbacksFixture = [
     'balasanKlien': null,
     'dibaca': true,
     'createdAt': '2026-10-04T06:00:00.000Z',
-    'pt': {'id': 3, 'nama': 'Sarah'},
+    'pt': {'id': 3, 'nama': 'Sarah', 'fotoUrl': 'https://cdn.test/sarah.jpg'},
   },
 ];

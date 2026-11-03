@@ -1,12 +1,14 @@
 class FeedbackPt {
   final int id;
   final String nama;
+  final String? fotoUrl;
 
-  const FeedbackPt({required this.id, required this.nama});
+  const FeedbackPt({required this.id, required this.nama, this.fotoUrl});
 
   factory FeedbackPt.fromJson(Map<String, dynamic> json) => FeedbackPt(
         id: (json['id'] as num?)?.toInt() ?? 0,
         nama: json['nama'] as String? ?? '',
+        fotoUrl: json['fotoUrl'] as String?,
       );
 }
 

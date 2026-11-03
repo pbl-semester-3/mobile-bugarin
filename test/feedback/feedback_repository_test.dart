@@ -31,6 +31,7 @@ void main() {
       expect(list[0].pt, isNull);
       expect(list[1].isPt, isTrue);
       expect(list[1].pt?.nama, 'Sarah');
+      expect(list[1].pt?.fotoUrl, 'https://cdn.test/sarah.jpg');
       expect(list[1].sudahDibalas, isFalse);
     });
 

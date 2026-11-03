@@ -332,13 +332,21 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                       shape: BoxShape.circle,
                       color: context.surfaceInner,
                       border: Border.all(color: _accent, width: 1.5),
+                      image: item.pt?.fotoUrl != null
+                          ? DecorationImage(
+                              image: NetworkImage(item.pt!.fotoUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
                     ),
-                    child: Center(
-                      child: Text(
-                        nama.trim().isEmpty ? '?' : nama.trim()[0].toUpperCase(),
-                        style: const TextStyle(color: _accent, fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                    ),
+                    child: item.pt?.fotoUrl == null
+                        ? Center(
+                            child: Text(
+                              nama.trim().isEmpty ? '?' : nama.trim()[0].toUpperCase(),
+                              style: const TextStyle(color: _accent, fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                          )
+                        : null,
                   ),
                   const SizedBox(width: 12),
                   Column(
