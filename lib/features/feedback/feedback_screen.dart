@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/theme_provider.dart';
-import '../../services/api_error.dart';
 import '../../shared/widgets/bugarin_header.dart';
 import '../dashboard/dashboard_screen.dart' show dashboardSummaryProvider;
 import 'data/feedback_providers.dart';
@@ -21,8 +20,6 @@ class FeedbackScreen extends ConsumerStatefulWidget {
 
 class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
   int _selectedFilter = 0; // 0 Semua, 1 AI, 2 Coach
-  int? _sendingId;
-  final Map<int, TextEditingController> _replyControllers = {};
   final Set<int> _readRequested = {};
 
   @override
@@ -32,31 +29,6 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
     if (widget.isActive && !oldWidget.isActive) {
       _tandaiBacaJikaAktif(ref.read(feedbackListProvider).value);
     }
-  }
-
-  @override
-  void dispose() {
-    for (final c in _replyControllers.values) {
-      c.dispose();
-    }
-    super.dispose();
-  }
-
-  TextEditingController _replyController(int id) =>
-      _replyControllers.putIfAbsent(id, () => TextEditingController());
-
-  void _toast(String pesan, {bool error = false}) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: error ? const Color(0xFFE53935) : null,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          content: Text(pesan),
-        ),
-      );
   }
 
   /// Tandai feedback belum dibaca sebagai "dibaca" — HANYA saat tab aktif,
@@ -82,28 +54,6 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
       ref.invalidate(dashboardSummaryProvider); // badge unread di bottom nav
     } catch (_) {
       // Diamkan; badge akan tersinkron saat dashboard di-refresh.
-    }
-  }
-
-  Future<void> _kirimBalasan(FeedbackItem item) async {
-    final controller = _replyController(item.id);
-    final teks = controller.text.trim();
-    if (teks.isEmpty) {
-      _toast('Balasan tidak boleh kosong.', error: true);
-      return;
-    }
-    setState(() => _sendingId = item.id);
-    try {
-      await ref.read(feedbackRepositoryProvider).replyFeedback(item.id, teks);
-      controller.clear();
-      ref.invalidate(feedbackListProvider);
-      _toast('Balasan terkirim.');
-    } on ApiException catch (e) {
-      _toast(e.message, error: true);
-    } catch (_) {
-      _toast('Gagal mengirim balasan.', error: true);
-    } finally {
-      if (mounted) setState(() => _sendingId = null);
     }
   }
 
@@ -366,64 +316,6 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
           ),
           const SizedBox(height: 14),
           Text(item.pesan, style: TextStyle(color: context.textPrimary, fontSize: 14, height: 1.5)),
-
-          if (item.sudahDibalas) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: context.surfaceInner, borderRadius: BorderRadius.circular(16)),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Balasan Anda',
-                      style: TextStyle(color: context.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text(item.balasanKlien!,
-                      style: TextStyle(color: context.textPrimary, fontSize: 13, fontStyle: FontStyle.italic)),
-                ],
-              ),
-            ),
-          ] else ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: context.bg,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: context.border),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _replyController(item.id),
-                      style: TextStyle(color: context.textPrimary, fontSize: 13),
-                      decoration: InputDecoration(
-                        hintText: 'Ketik balasan Anda...',
-                        hintStyle: TextStyle(color: context.textMuted, fontSize: 13),
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: _sendingId == item.id ? null : () => _kirimBalasan(item),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _accent,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      elevation: 0,
-                    ),
-                    child: _sendingId == item.id
-                        ? const SizedBox(
-                            width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Text('Balas', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
