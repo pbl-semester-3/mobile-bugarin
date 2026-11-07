@@ -467,12 +467,128 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
     );
   }
 
+  Widget _buildMealPlanList(List<MealPlanItem> items) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Daftar Menu',
+              style: TextStyle(
+                  color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          ...List.generate(items.length, (i) {
+            final m = items[i];
+            return Padding(
+              padding: EdgeInsets.only(bottom: i == items.length - 1 ? 0 : 10),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(m.waktu,
+                            style: TextStyle(
+                                color: context.textPrimary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
+                        Text(m.menu,
+                            style: TextStyle(color: context.textSecondary, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: context.surfaceInner,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: context.border),
+                    ),
+                    child: Text('${m.estimasiKalori} kkal',
+                        style: TextStyle(
+                            color: context.textPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkoutPlanList(List<WorkoutPlanItem> items) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: context.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Daftar Latihan',
+              style: TextStyle(
+                  color: context.textPrimary, fontSize: 13, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 10),
+          ...List.generate(items.length, (i) {
+            final w = items[i];
+            return Padding(
+              padding: EdgeInsets.only(bottom: i == items.length - 1 ? 0 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${w.hari} · ${w.jam}',
+                      style: TextStyle(
+                          color: context.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 3),
+                  Text(w.jenis,
+                      style: TextStyle(color: context.textSecondary, fontSize: 12)),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(Icons.place_outlined, size: 13, color: context.textMuted),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(w.lokasi,
+                            style: TextStyle(color: context.textMuted, fontSize: 11)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMealSection(WeeklyPlan? plan) {
     final total = _totalKaloriMasukDraft;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildWeeklyPlanCard(plan, meal: true),
+        if (plan != null && plan.mealPlan.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildMealPlanList(plan.mealPlan),
+        ],
         const SizedBox(height: 22),
         Text('Meal Hari Ini',
             style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
@@ -678,6 +794,10 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildWeeklyPlanCard(plan, meal: false),
+        if (plan != null && plan.workoutPlan.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildWorkoutPlanList(plan.workoutPlan),
+        ],
         const SizedBox(height: 22),
         Text('Catat Aktivitas Latihan',
             style: TextStyle(color: context.textPrimary, fontSize: 14, fontWeight: FontWeight.bold)),
