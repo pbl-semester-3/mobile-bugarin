@@ -450,13 +450,12 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: context.surfaceInner,
+              color: context.primary,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: context.border),
             ),
-            child: Text('WEEKLY PLAN',
+            child: const Text('WEEKLY PLAN',
                 style: TextStyle(
-                    color: context.textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
+                    color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.8)),
           ),
           const SizedBox(height: 12),
           Text(title, style: TextStyle(color: context.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
@@ -509,13 +508,12 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: context.surfaceInner,
+                      color: context.primary,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: context.border),
                     ),
                     child: Text('${m.estimasiKalori} kkal',
-                        style: TextStyle(
-                            color: context.textPrimary,
+                        style: const TextStyle(
+                            color: Colors.white,
                             fontSize: 11,
                             fontWeight: FontWeight.bold)),
                   ),
@@ -562,7 +560,7 @@ class _ProgresScreenState extends ConsumerState<ProgresScreen> {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Icon(Icons.place_outlined, size: 13, color: context.textMuted),
+                      const Icon(Icons.location_on_outlined, size: 13, color: Color(0xFFFF5C39)),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(w.lokasi,
