@@ -6,12 +6,12 @@
 
 # 2) Plugin Flutter & kode Pigeon (generated): dipanggil via method channel /
 #    nama method, sehingga tidak boleh dihapus/di-obfuscate. Tanpa ini,
-#    mis. shared_preferences gagal dengan NoSuchMethodError("getAll") dan
-#    aplikasi black screen saat startup di build release.
+#    mis. shared_preferences gagal dengan NoSuchMethodError("getAll").
 -keep class io.flutter.plugins.** { *; }
 -keep class dev.flutter.pigeon.** { *; }
 
-# 3) Tipe parameter suspend function (Continuation) dipakai di signature
-#    Pigeon; jangan di-rename agar signature tetap cocok saat runtime.
--keep class kotlin.coroutines.Continuation { *; }
--keep class kotlin.coroutines.CoroutineContext { *; }
+# 3) Kotlin coroutines (dipakai suspend function Pigeon/plugin). R8 cenderung
+#    menghapus kelas internal seperti CoroutineSingletons -> ClassNotFoundException.
+-keep class kotlin.coroutines.** { *; }
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn kotlinx.coroutines.**
