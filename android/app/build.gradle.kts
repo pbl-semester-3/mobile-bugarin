@@ -57,7 +57,11 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
-            // Pertahankan class keamanan (Tink/flutter_secure_storage) dari R8.
+            // Nonaktifkan R8/minify: build release sebelumnya menyebabkan plugin
+            // (shared_preferences/Pigeon, Tink) gagal karena kelas Kotlin terhapus
+            // (NoSuchMethodError / ClassNotFoundException) -> black screen.
+            isMinifyEnabled = false
+            isShrinkResources = false
             proguardFile("proguard-rules.pro")
         }
     }
