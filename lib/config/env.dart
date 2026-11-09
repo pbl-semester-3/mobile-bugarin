@@ -5,4 +5,12 @@ class Env {
     'API_URL',
     defaultValue: 'http://10.0.2.2:4000',
   );
+
+  // Google OAuth (Web client ID) — WAJIB diisi saat run agar login Google aktif:
+  //   flutter run --dart-define=GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+  // Dipakai sebagai `serverClientId` di GoogleSignIn agar `idToken.aud`
+  // cocok dengan audience yang diverifikasi backend (GOOGLE_CLIENT_ID backend).
+  static const googleClientId = String.fromEnvironment('GOOGLE_CLIENT_ID');
+
+  static bool get hasGoogleClientId => googleClientId.isNotEmpty;
 }

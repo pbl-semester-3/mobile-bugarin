@@ -1,5 +1,9 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+/// Penyimpanan rahasia (token JWT) memakai `flutter_secure_storage`.
+///
+/// Setting non-rahasia (tema, flag welcome) ada di `SettingsStore`
+/// (`shared_preferences`).
 class TokenStorage {
   final _storage = const FlutterSecureStorage();
   static const _key = 'auth_token';

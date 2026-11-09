@@ -11,6 +11,7 @@ class MasterOlahragaCache extends Table {
   TextColumn get nama => text()();
   RealColumn get metValue => real().named('met_value')();
   BoolColumn get butuhJarak => boolean().named('butuh_jarak')();
+  BoolColumn get butuhBeban => boolean().named('butuh_beban')();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -35,14 +36,37 @@ class WeeklyPlanCache extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-// TODO: lengkapi query get-or-sync sesuai skill drift-offline-cache
-// (syncOlahraga, syncMakanan, cacheWeeklyPlan, getCachedWeeklyPlan).
-@DriftDatabase(tables: [MasterOlahragaCache, MasterMakananCache, WeeklyPlanCache])
+/// Single-row cache untuk dashboard summary (stale-while-revalidate).
+class DashboardSummaryCache extends Table {
+  IntColumn get id => integer()(); // selalu 1
+  TextColumn get json => text()();
+  DateTimeColumn get cachedAt => dateTime().named('cached_at')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(
+  tables: [MasterOlahragaCache, MasterMakananCache, WeeklyPlanCache, DashboardSummaryCache],
+)
 class LocalDatabase extends _$LocalDatabase {
   LocalDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(dashboardSummaryCache);
+          }
+          if (from < 3) {
+            await m.addColumn(masterOlahragaCache, masterOlahragaCache.butuhBeban);
+          }
+        },
+      );
 }
 
 LazyDatabase _openConnection() {

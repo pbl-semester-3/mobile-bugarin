@@ -6,4 +6,7 @@ build/
 *.freezed.dart
 .env
 android/local.properties
+android/key.properties
+android/app/keystore.jks
+*.jks
 ios/Flutter/Flutter.podspec

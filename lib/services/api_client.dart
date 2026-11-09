@@ -12,6 +12,10 @@ class ApiClient {
           baseUrl: Env.apiUrl,
           connectTimeout: const Duration(seconds: 10),
           receiveTimeout: const Duration(seconds: 15),
+          headers: const {
+            'X-Client-Type': 'mobile',
+            'Accept': 'application/json',
+          },
         )) {
     dio.interceptors.add(
       InterceptorsWrapper(
@@ -34,7 +38,6 @@ class ApiClient {
   }
 }
 
-/// Error validasi dari backend, format: { "error": { "fields": { "email": ["..."] } } }
 class ApiValidationError implements Exception {
   final Map<String, List<String>> fieldErrors;
   ApiValidationError(this.fieldErrors);
