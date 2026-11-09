@@ -57,6 +57,8 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+            // Pertahankan class keamanan (Tink/flutter_secure_storage) dari R8.
+            proguardFile("proguard-rules.pro")
         }
     }
 }
