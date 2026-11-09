@@ -5,23 +5,44 @@ import 'package:shared_preferences/shared_preferences.dart';
 ///
 /// Rahasia (mis. token JWT) TETAP di `flutter_secure_storage` — lihat
 /// `token_storage.dart`. Store ini menangani: mode tema & flag welcome.
+///
+/// Inisialisasi dibuat tahan-gagal: bila `shared_preferences` atau secure
+/// storage bermasalah, aplikasi tetap bisa jalan memakai nilai default
+/// (mencegah black screen saat startup di build release).
 class SettingsStore {
   SettingsStore._(this._prefs);
 
-  final SharedPreferences _prefs;
+  final SharedPreferences? _prefs;
 
   static const _themeKey = 'app_theme_mode';
   static const _hasSeenWelcomeKey = 'has_seen_welcome';
   static const _migratedKey = 'settings_migrated_v1';
 
+  static const _initTimeout = Duration(seconds: 5);
+
   static SettingsStore? _instance;
 
   /// Wajib dipanggil sekali di `main()` sebelum `runApp`.
   static Future<SettingsStore> init() async {
-    final prefs = await SharedPreferences.getInstance();
+    SharedPreferences? prefs;
+    try {
+      prefs = await SharedPreferences.getInstance().timeout(_initTimeout);
+    } catch (_) {
+      prefs = null;
+    }
+
     final store = SettingsStore._(prefs);
-    await store._migrateOnce();
+    // Set instance SEBELUM migrasi agar provider bisa memakainya segera.
     _instance = store;
+
+    if (prefs != null) {
+      try {
+        // Migrasi best-effort: jangan blokir startup bila secure storage gagal.
+        await store._migrateOnce().timeout(_initTimeout);
+      } catch (_) {
+        // Abaikan — nilai default tetap dipakai.
+      }
+    }
     return store;
   }
 
@@ -39,32 +60,38 @@ class SettingsStore {
   /// `flutter_secure_storage` (versi sebelum memakai shared_preferences),
   /// lalu hapus key lama agar tidak jadi data yatim.
   Future<void> _migrateOnce() async {
-    if (_prefs.getBool(_migratedKey) ?? false) return;
+    final prefs = _prefs;
+    if (prefs == null) return;
+    if (prefs.getBool(_migratedKey) ?? false) return;
 
     const secure = FlutterSecureStorage();
 
     final theme = await secure.read(key: _themeKey);
-    if (theme != null && !_prefs.containsKey(_themeKey)) {
-      await _prefs.setString(_themeKey, theme);
+    if (theme != null && !prefs.containsKey(_themeKey)) {
+      await prefs.setString(_themeKey, theme);
     }
 
     final welcome = await secure.read(key: _hasSeenWelcomeKey);
-    if (welcome != null && !_prefs.containsKey(_hasSeenWelcomeKey)) {
-      await _prefs.setBool(_hasSeenWelcomeKey, welcome == 'true');
+    if (welcome != null && !prefs.containsKey(_hasSeenWelcomeKey)) {
+      await prefs.setBool(_hasSeenWelcomeKey, welcome == 'true');
     }
 
     await secure.delete(key: _themeKey);
     await secure.delete(key: _hasSeenWelcomeKey);
 
-    await _prefs.setBool(_migratedKey, true);
+    await prefs.setBool(_migratedKey, true);
   }
 
   /// 'light' | 'dark' | null (belum pernah diset).
-  String? getThemeMode() => _prefs.getString(_themeKey);
+  String? getThemeMode() => _prefs?.getString(_themeKey);
 
-  Future<void> setThemeMode(String value) => _prefs.setString(_themeKey, value);
+  Future<void> setThemeMode(String value) async {
+    await _prefs?.setString(_themeKey, value);
+  }
 
-  bool getHasSeenWelcome() => _prefs.getBool(_hasSeenWelcomeKey) ?? false;
+  bool getHasSeenWelcome() => _prefs?.getBool(_hasSeenWelcomeKey) ?? false;
 
-  Future<void> setHasSeenWelcome() => _prefs.setBool(_hasSeenWelcomeKey, true);
+  Future<void> setHasSeenWelcome() async {
+    await _prefs?.setBool(_hasSeenWelcomeKey, true);
+  }
 }
