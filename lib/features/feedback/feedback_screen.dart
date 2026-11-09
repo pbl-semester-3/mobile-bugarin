@@ -71,9 +71,9 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: const BugarinHeader(subtitle: 'Feedback'),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              child: BugarinHeader(subtitle: 'Feedback'),
             ),
             const SizedBox(height: 24),
             Padding(

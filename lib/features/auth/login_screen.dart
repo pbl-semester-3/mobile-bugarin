@@ -326,14 +326,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     // Munculkan Pesan Error di Bawah Kolom Kata Sandi
                     if (_hasLoginError) ...[
                       const SizedBox(height: 10),
-                      Row(
+                      const Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 2, left: 4),
                             child: Icon(Icons.warning_amber_rounded, color: errorColor, size: 16),
                           ),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               'Kata sandi yang Anda masukkan salah. Silakan coba lagi\natau atur ulang kata sandi Anda.',

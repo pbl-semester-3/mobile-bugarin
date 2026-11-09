@@ -152,8 +152,8 @@ class _PtKuScreenState extends ConsumerState<PtKuScreen> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: context.border),
                 ),
-                child: Column(
-                  children: const [
+                child: const Column(
+                  children: [
                     _FeatureRow(icon: Icons.calendar_today_rounded, text: 'Jadwal latihan mingguan'),
                     SizedBox(height: 16),
                     _FeatureRow(icon: Icons.schedule_rounded, text: 'Jadwal fleksibel & booking mandiri'),
