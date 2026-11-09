@@ -32,9 +32,18 @@ dev_dependencies:
   riverpod_generator: ^4.0.9
   drift_dev: ^2.21.0
   build_runner: ^2.4.13
+  flutter_launcher_icons: 0.14.4
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/bugarin-icon.png"
+  adaptive_icon_background: "#0E0E10"
+  adaptive_icon_foreground: "assets/images/bugarin-icon-foreground.png"
+  min_sdk_android: 21
